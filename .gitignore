@@ -58,3 +58,7 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 # Archivos temporales del sistema
 .DS_Store
 Thumbs.db
+
+.node_modules
+dist 
+.env
