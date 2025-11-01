@@ -67,7 +67,6 @@ export class ContactService {
                 <!-- Header con gradiente -->
                 <tr>
                   <td align="center" style="background: linear-gradient(135deg, ${this.colors.primary} 0%, ${this.colors.secondary} 100%); padding: 25px 30px 30px 30px;">
-                    <img src="${this.logoUrl}" alt="Pool & Chill Logo" width="180" style="display: block; max-width: 180px; height: auto; margin: 0 auto 10px auto;" />
                     <h1 style="margin: 0 0 10px 0; color: ${this.colors.white}; font-size: 28px; font-weight: 700; letter-spacing: -0.5px;">Nuevo Formulario de Contacto</h1>
                     <p style="margin: 0; color: rgba(255,255,255,0.95); font-size: 16px; font-weight: 500;">${subtitulo}</p>
                   </td>
