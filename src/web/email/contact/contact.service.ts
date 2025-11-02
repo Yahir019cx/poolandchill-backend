@@ -64,17 +64,9 @@ export class ContactService {
               <!-- Contenedor principal -->
               <table border="0" cellpadding="0" cellspacing="0" width="600" style="max-width: 600px; background-color: ${this.colors.white}; box-shadow: 0 4px 20px rgba(0,0,0,0.08); border-radius: 16px; overflow: hidden;">
 
-                <!-- Header con gradiente -->
-                <tr>
-                  <td align="center" style="background: linear-gradient(135deg, ${this.colors.primary} 0%, ${this.colors.secondary} 100%); padding: 25px 30px 30px 30px;">
-                    <h1 style="margin: 0 0 10px 0; color: ${this.colors.white}; font-size: 28px; font-weight: 700; letter-spacing: -0.5px;">Nuevo Formulario de Contacto</h1>
-                    <p style="margin: 0; color: rgba(255,255,255,0.95); font-size: 16px; font-weight: 500;">${subtitulo}</p>
-                  </td>
-                </tr>
-
                 <!-- Badge de rol -->
                 <tr>
-                  <td align="center" style="padding: 25px 30px 10px 30px;">
+                  <td align="center" style="padding: 5px 30px 10px 30px;">
                     ${rolBadge}
                   </td>
                 </tr>
@@ -156,28 +148,8 @@ export class ContactService {
                 <tr>
                   <td align="center" style="background: linear-gradient(135deg, ${this.colors.dark} 0%, ${this.colors.secondary} 100%); padding: 40px 30px;">
                     <img src="${this.logoUrl}" alt="Pool & Chill" width="120" style="display: block; max-width: 120px; height: auto; margin: 0 auto 20px auto; opacity: 0.9;" />
-                    <p style="margin: 0 0 20px 0; color: ${this.colors.primary}; font-size: 16px; font-weight: 500; font-style: italic;">Relájate, disfruta y reserva</p>
+                    <p style="margin: 0 0 10px 0; color: ${this.colors.primary}; font-size: 16px; font-weight: 500; font-style: italic;">Relájate, disfruta y reserva</p>
 
-                    <!-- Redes sociales -->
-                    <table border="0" cellpadding="0" cellspacing="0" align="center" style="margin: 0 auto 20px auto;">
-                      <tr>
-                        <td align="center" style="padding: 0 8px;">
-                          <a href="https://facebook.com/poolandchill" target="_blank" style="display: inline-block; width: 36px; height: 36px; background-color: ${this.colors.primary}; border-radius: 50%; text-align: center; line-height: 36px;">
-                            <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSIjRkZGRkZGIj48cGF0aCBkPSJNMjQgMTIuMDczYzAtNi42MjctNS4zNzMtMTItMTItMTJzLTEyIDUuMzczLTEyIDEyYzAgNS45OSA0LjM4OCAxMC45NTQgMTAuMTI1IDExLjg1NHYtOC4zODVINy4wNzh2LTMuNDdoMy4wNDd2LTIuNjRjMC0zLjAwNyAxLjc5Mi00LjY2OSA0LjUzMy00LjY2OSAxLjMxMiAwIDIuNjg2LjIzNCAyLjY4Ni4yMzR2Mi45NTNoLTEuNTE0Yy0xLjQ5MSAwLTEuOTU1LjkyNS0xLjk1NSAxLjg3NHYyLjI1aDMuMzI4bC0uNTMyIDMuNDdoLTIuNzk2djguMzg1QzE5LjYxMiAyMy4wMjcgMjQgMTguMDYyIDI0IDEyLjA3M3oiLz48L3N2Zz4=" alt="Facebook" width="20" height="20" style="display: block; border: 0;" />
-                          </a>
-                        </td>
-                        <td align="center" style="padding: 0 8px;">
-                          <a href="https://instagram.com/poolandchill" target="_blank" style="display: inline-block; width: 36px; height: 36px; background-color: ${this.colors.primary}; border-radius: 50%; text-align: center; line-height: 36px;">
-                            <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSIjRkZGRkZGIj48cGF0aCBkPSJNMTIgMi4xNjNjMy4yMDQgMCAzLjU4NC4wMTIgNC44NS4wNyAzLjI1Mi4xNDggNC43NzEgMS42OTEgNC45MTkgNC45MTkuMDU4IDEuMjY1LjA2OSAxLjY0NS4wNjkgNC44NDkgMCAzLjIwNS0uMDEyIDMuNTg0LS4wNjkgNC44NDktLjE0OSAzLjIyNS0xLjY2NCA0Ljc3MS00LjkxOSA0LjkxOS0xLjI2Ni4wNTgtMS42NDQuMDctNC44NS4wNy0zLjIwNCAwLTMuNTg0LS4wMTItNC44NDktLjA3LTMuMjYtLjE0OS00Ljc3MS0xLjY5OS00LjkxOS00LjkyLS4wNTgtMS4yNjUtLjA3LTEuNjQ0LS4wNy00Ljg0OSAwLTMuMjA0LjAxMy0zLjU4My4wNy00Ljg0OS4xNDktMy4yMjcgMS42NjQtNC43NzEgNC45MTktNC45MTkgMS4yNjYtLjA1NyAxLjY0NS0uMDY5IDQuODQ5LS4wNjl6TTEyIDBDOC43NDEgMCA4LjMzMy4wMTQgNy4wNTMuMDcyIDIuNjk1LjI3Mi4yNzMgMi42OS4wNzMgNy4wNTIuMDE0IDguMzMzIDAgOC43NDEgMCAxMnMuMDE0IDMuNjY4LjA3MiA0Ljk0OGMuMiA0LjM1OCAyLjYxOCA2Ljc4IDYuOTggNi45OEM4LjMzMyAyMy45ODYgOC43NDEgMjQgMTIgMjRzMy42NjgtLjAxNCA0Ljk0OC0uMDcyYzQuMzU0LS4yIDYuNzgyLTIuNjE4IDYuOTc5LTYuOTguMDU4LTEuMjguMDczLTEuNjg5LjA3My00Ljk0OHMtLjAxNS0zLjY2Ny0uMDcyLTQuOTQ3Yy0uMTk2LTQuMzU0LTIuNjE3LTYuNzgtNi45NzktNi45OEMxNS42NjguMDE0IDE1LjI1OSAwIDEyIDB6bTAgNS44MzhhNi4xNjIgNi4xNjIgMCAxIDAgMCAxMi4zMjQgNi4xNjIgNi4xNjIgMCAwIDAgMC0xMi4zMjR6TTEyIDE2YTQgNCAwIDEgMSAwLTggNCA0IDAgMCAxIDAgOHptNi40MDYtMTEuODQ1YTEuNDQgMS40NCAwIDEgMCAwIDIuODggMS40NCAxLjQ0IDAgMCAwIDAtMi44OHoiLz48L3N2Zz4=" alt="Instagram" width="20" height="20" style="display: block; border: 0;" />
-                          </a>
-                        </td>
-                        <td align="center" style="padding: 0 8px;">
-                          <a href="https://tiktok.com/@poolandchill" target="_blank" style="display: inline-block; width: 36px; height: 36px; background-color: ${this.colors.primary}; border-radius: 50%; text-align: center; line-height: 36px;">
-                            <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSIjRkZGRkZGIj48cGF0aCBkPSJNMTkuNTg5IDYuNjg2YTQuNzkzIDQuNzkzIDAgMCAxLTMuNzctNC4yNDVWMmgtNC42Njd2MTMuNjcyYTIuODk2IDIuODk2IDAgMSAxLTIuMzEtMi44OTF2LTQuODQ1YTcuNjU2IDcuNjU2IDAgMCAwLTEuMDEtLjA2NkM0LjAyMSA3Ljg3IDEgMTAuODkyIDEgMTQuNjExYzAgMy43MiAzLjAyMSA2Ljc0MSA2Ljc0MiA2Ljc0MSAxLjg3MiAwIDMuNTY4LS43NjUgNC43OTQtMi4wMDEgMS41MzUtMS41NSAyLjQ4OC0zLjY4NSAyLjQ4OC02LjA0VjcuODM3YTkuNDcxIDkuNDcxIDAgMCAwIDQuNTY1IDEuMTY2VjQuMzM3YTQuNSA0LjUgMCAwIDEtLjAwMSAyLjM0OXoiLz48L3N2Zz4=" alt="TikTok" width="20" height="20" style="display: block; border: 0;" />
-                          </a>
-                        </td>
-                      </tr>
-                    </table>
 
                     <p style="margin: 0 0 8px 0; color: rgba(255,255,255,0.9); font-size: 13px; font-weight: 500;">© 2025 Pool & Chill. Todos los derechos reservados.</p>
                     <p style="margin: 0; color: ${this.colors.primary}; font-size: 12px; font-weight: 500;">Sistema de notificaciones automáticas</p>
