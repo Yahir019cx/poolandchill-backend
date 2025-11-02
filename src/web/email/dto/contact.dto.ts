@@ -67,6 +67,6 @@ export class ContactDto {
   })
   @IsOptional()
   @IsString()
-  @MinLength(5)
+  @MinLength(1)
   mensaje?: string;
 }
