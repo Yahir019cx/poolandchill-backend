@@ -66,7 +66,7 @@ export class ContactService {
 
                 <!-- Badge de rol -->
                 <tr>
-                  <td align="center" style="padding: 5px 30px 10px 30px;">
+                  <td align="center" style="padding: 15px 30px 10px 30px;">
                     ${rolBadge}
                   </td>
                 </tr>
