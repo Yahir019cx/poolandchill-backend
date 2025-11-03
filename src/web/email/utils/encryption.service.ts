@@ -49,6 +49,12 @@ export class EncryptionService {
       // Extraer los datos cifrados y el auth tag (el resto)
       const encryptedData = encryptedBuffer.subarray(this.SALT_LENGTH + this.IV_LENGTH);
 
+      const authTagLength = 16; // 128 bits - tamaño estándar de GCM
+
+      // Extraer el auth tag (últimos 16 bytes)
+      const ciphertext = encryptedData.subarray(0, encryptedData.length - authTagLength);
+      const authTag = encryptedData.subarray(encryptedData.length - authTagLength);
+
       // Derivar la clave usando PBKDF2
       const key = pbkdf2Sync(
         this.SECRET_KEY,
@@ -57,11 +63,6 @@ export class EncryptionService {
         this.KEY_LENGTH,
         'sha256'
       );
-
-      // El auth tag está al final de los datos cifrados (últimos 16 bytes)
-      const authTagLength = 16;
-      const ciphertext = encryptedData.subarray(0, encryptedData.length - authTagLength);
-      const authTag = encryptedData.subarray(encryptedData.length - authTagLength);
 
       // Crear el decipher
       const decipher = createDecipheriv('aes-256-gcm', key, iv);
