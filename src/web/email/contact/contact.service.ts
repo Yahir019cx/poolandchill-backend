@@ -30,7 +30,18 @@ export class ContactService {
 
     const htmlBody = this.getEmailTemplate(data, aliasReceptor);
 
-    return await this.graphMail.sendMail(aliasReceptor, subject, htmlBody);
+    // Procesar archivos adjuntos si existen
+    let attachments: Array<{ name: string; contentBytes: string; contentType: string }> | undefined;
+
+    if (data.fotos && data.fotos.length > 0) {
+      attachments = data.fotos.map((file, index) => ({
+        name: file.originalname || `foto-${index + 1}.${file.mimetype.split('/')[1]}`,
+        contentType: file.mimetype,
+        contentBytes: file.buffer.toString('base64'),
+      }));
+    }
+
+    return await this.graphMail.sendMail(aliasReceptor, subject, htmlBody, attachments);
   }
 
   private getEmailTemplate(data: ContactDto, aliasReceptor: string): string {
@@ -119,6 +130,30 @@ export class ContactService {
                       <tr>
                         <td style="background-color: ${this.colors.light}; padding: 20px; border-radius: 8px; border-left: 4px solid ${this.colors.primary};">
                           <p style="margin: 0; color: ${this.colors.textDark}; font-size: 15px; line-height: 1.6;">${data.mensaje}</p>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                ` : ''}
+
+                ${data.fotos && data.fotos.length > 0 ? `
+                <tr>
+                  <td style="padding: 0 30px 30px 30px;">
+                    <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                      <tr>
+                        <td>
+                          <h2 style="margin: 0 0 20px 0; color: ${this.colors.textDark}; font-size: 18px; font-weight: 700; padding-bottom: 10px; border-bottom: 3px solid ${this.colors.primary};">Fotos del Lugar</h2>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="background-color: ${this.colors.light}; padding: 20px; border-radius: 8px; border-left: 4px solid ${this.colors.green};">
+                          <p style="margin: 0; color: ${this.colors.textDark}; font-size: 15px;">
+                            <strong>📎 ${data.fotos.length} foto${data.fotos.length > 1 ? 's' : ''} adjunta${data.fotos.length > 1 ? 's' : ''}</strong>
+                          </p>
+                          <p style="margin: 8px 0 0 0; color: ${this.colors.textLight}; font-size: 13px;">
+                            ${data.fotos.map((f, i) => f.originalname || `foto-${i + 1}`).join(', ')}
+                          </p>
                         </td>
                       </tr>
                     </table>

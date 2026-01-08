@@ -69,4 +69,13 @@ export class ContactDto {
   @IsString()
   @MinLength(1)
   mensaje?: string;
+
+  @ApiProperty({
+    type: 'array',
+    items: { type: 'string', format: 'binary' },
+    required: false,
+    description: 'Fotos del lugar (hasta 10 archivos, máximo 5MB cada uno)',
+  })
+  @IsOptional()
+  fotos?: Express.Multer.File[];
 }
