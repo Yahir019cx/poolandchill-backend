@@ -48,6 +48,7 @@ const contactData = {
   nombreLugar: "Cabañas del Sol",
   direccion: "Av. Juárez #123, León, Gto.",
   descripcion: "Hermosa cabaña con alberca",
+  amenidades: ["WiFi", "Estacionamiento", "Alberca", "Asador", "Cocina equipada"], // NUEVO
   mensaje: "Me gustaría registrar mi propiedad"
 };
 
@@ -213,12 +214,30 @@ Sigue los ejemplos de código de arriba según tu framework.
 
 Cuando se envían fotos, el email incluye:
 
-1. **Adjuntos**: Cada foto se adjunta individualmente al email
-2. **Sección visual**: Se muestra en el cuerpo del email:
-   - Cantidad de fotos adjuntas
-   - Nombres de los archivos
+1. **Adjuntos**: Cada foto se adjunta individualmente al email (NO embebidas en el HTML)
+2. **Sección visual en el cuerpo del email**:
+   - **Datos de contacto**: Nombre, correo, teléfono
+   - **Información del espacio** (si es anfitrión):
+     - Tipos de espacio
+     - Nombre del lugar
+     - Dirección
+     - Descripción
+     - **Amenidades** (NUEVO): WiFi, Estacionamiento, etc.
+   - **Mensaje** (si lo incluye)
+   - **Fotos adjuntas**: Cantidad y nombres de archivos (pero NO las imágenes en el HTML)
 
-Ejemplo:
+Ejemplo de sección de amenidades:
+```
+┌─────────────────────────────────┐
+│ Amenidades                      │
+├─────────────────────────────────┤
+│ ✓ WiFi  ✓ Estacionamiento       │
+│ ✓ Alberca  ✓ Asador             │
+│ ✓ Cocina equipada               │
+└─────────────────────────────────┘
+```
+
+Ejemplo de sección de fotos:
 ```
 ┌─────────────────────────────────┐
 │ Fotos del Lugar                 │
@@ -227,6 +246,8 @@ Ejemplo:
 │ foto-1.jpg, foto-2.png, ...     │
 └─────────────────────────────────┘
 ```
+
+**Importante**: Las fotos se envían como archivos adjuntos del correo, no embebidas en el HTML, por lo que el destinatario podrá descargarlas desde los adjuntos del email.
 
 ---
 

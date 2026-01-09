@@ -250,6 +250,18 @@ export class ContactService {
               </td>
             </tr>
             ` : ''}
+            ${data.amenidades && data.amenidades.length > 0 ? `
+            <tr>
+              <td style="padding-bottom: 16px;">
+                <p style="margin: 0 0 10px 0; color: ${this.colors.textLight}; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px;">Amenidades</p>
+                <div style="background-color: ${this.colors.light}; padding: 16px; border-radius: 8px; border-left: 4px solid ${this.colors.green};">
+                  ${data.amenidades.map(amenidad => `
+                    <span style="display: inline-block; background-color: ${this.colors.white}; color: ${this.colors.textDark}; padding: 8px 12px; border-radius: 6px; font-size: 13px; font-weight: 500; margin: 0 6px 6px 0; border: 1px solid ${this.colors.primary};">✓ ${amenidad}</span>
+                  `).join('')}
+                </div>
+              </td>
+            </tr>
+            ` : ''}
           </table>
         </td>
       </tr>

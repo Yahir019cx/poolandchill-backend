@@ -62,6 +62,15 @@ export class ContactDto {
   descripcion?: string;
 
   @ApiProperty({
+    example: ['WiFi', 'Estacionamiento', 'Alberca', 'Asador', 'Cocina equipada'],
+    required: false,
+    description: 'Amenidades del lugar (solo si es anfitrión)',
+  })
+  @IsOptional()
+  @IsArray()
+  amenidades?: string[];
+
+  @ApiProperty({
     example: 'Me gustaría que la app tuviera más filtros por ubicación.',
     required: false,
   })
