@@ -2,7 +2,12 @@
   "permissions": {
     "allow": [
       "Bash(npm run build:*)",
-      "Bash(pnpm build:*)"
+      "Bash(pnpm build:*)",
+      "Bash(npm install:*)",
+      "Bash(tree:*)",
+      "Bash(npm cache clean:*)",
+      "Bash(pnpm add:*)",
+      "Bash(pnpm run build:*)"
     ],
     "deny": [],
     "ask": []
