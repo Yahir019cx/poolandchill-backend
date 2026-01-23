@@ -5,7 +5,9 @@
       "Bash(npm install:*)",
       "Bash(npm run start:dev:*)",
       "Bash(timeout /t 10 /nobreak)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "Bash(git push:*)",
+      "Bash(pnpm add:*)"
     ],
     "deny": [],
     "ask": []

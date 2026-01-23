@@ -2,7 +2,8 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
-import { ValidationPipe } from '@nestjs/common'; // 👈 importante
+import { ValidationPipe } from '@nestjs/common';
+import { DataSource } from 'typeorm';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -41,5 +42,12 @@ async function bootstrap() {
   await app.listen(port);
   console.log(`Servidor corriendo en http://localhost:${port}`);
   console.log(`Swagger disponible en http://localhost:${port}/api/docs`);
+
+  const dataSource = app.get(DataSource);
+  if (dataSource.isInitialized) {
+    console.log('Conexión a la base de datos exitosa');
+  } else {
+    console.log('Error al conectar a la base de datos');
+  }
 }
 bootstrap();
