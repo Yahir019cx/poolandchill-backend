@@ -64,8 +64,8 @@ export class EmailVerificationService {
       // Ejecutar el stored procedure
       const result = await pool
         .request()
-        .input('VerificationToken', sql.NVarChar(100), token)
-        .output('UserId', sql.Int)
+        .input('VerificationToken', sql.NVarChar(255), token)
+        .output('UserId', sql.UniqueIdentifier)
         .output('ErrorMessage', sql.NVarChar(500))
         .execute('[security].[xsp_VerifyEmailToken]');
 

@@ -140,9 +140,9 @@ export class RegisterService {
         .input('PasswordSalt', sql.NVarChar(255), data.passwordSalt)
         .input('DateOfBirth', sql.Date, data.dateOfBirth)
         .input('Gender', sql.TinyInt, data.gender)
-        .input('VerificationToken', sql.NVarChar(100), data.verificationToken)
+        .input('VerificationToken', sql.NVarChar(255), data.verificationToken)
         .input('TokenExpiresAt', sql.DateTime2, data.tokenExpiresAt)
-        .output('RegistrationId', sql.Int)
+        .output('RegistrationId', sql.UniqueIdentifier)
         .output('ErrorMessage', sql.NVarChar(500))
         .execute('[security].[xsp_CreatePendingRegistration]');
 
