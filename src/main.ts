@@ -26,7 +26,7 @@ async function bootstrap() {
   });
 
   const config = new DocumentBuilder()
-    .setTitle('Pool & Chill API')
+    .setTitle('Pool&Chill API')
     .setDescription('Documentación oficial de la API NestJS')
     .setVersion('1.0')
     .addTag('poolchill')
