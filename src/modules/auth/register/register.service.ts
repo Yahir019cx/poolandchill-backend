@@ -10,6 +10,7 @@ import * as sql from 'mssql';
 import { v4 as uuidv4 } from 'uuid';
 import { RegisterDto } from './dto/register.dto';
 import { GraphMailService } from '../../../web/email/graph-mail.service';
+import { DatabaseService } from '../../../config/database.config';
 import {
   RegisterResponse,
   PendingRegistration,
@@ -43,6 +44,7 @@ export class RegisterService {
   constructor(
     private readonly configService: ConfigService,
     private readonly graphMailService: GraphMailService,
+    private readonly databaseService: DatabaseService,
   ) {}
 
   /**
@@ -51,11 +53,6 @@ export class RegisterService {
    * 2. Genera token de verificación
    * 3. Guarda en la tabla de registros pendientes
    * 4. Envía email de verificación
-   *
-   * @param registerDto - Datos del usuario a registrar
-   * @returns Respuesta indicando que se envió el email de verificación
-   * @throws ConflictException si el email ya está registrado
-   * @throws InternalServerErrorException si hay error en la base de datos
    */
   async register(registerDto: RegisterDto): Promise<RegisterResponse> {
     const { email, firstName, lastName, password, dateOfBirth, gender } = registerDto;
@@ -113,57 +110,44 @@ export class RegisterService {
     verificationToken: string;
     tokenExpiresAt: Date;
   }): Promise<PendingRegistration> {
-    let pool: sql.ConnectionPool | null = null;
-
     try {
-      // Configurar conexión a SQL Server
-      const config: sql.config = {
-        server: this.configService.get<string>('DB_HOST', ''),
-        database: this.configService.get<string>('DB_NAME', ''),
-        user: this.configService.get<string>('DB_USER', ''),
-        password: this.configService.get<string>('DB_PASS', ''),
-        options: {
-          encrypt: true,
-          trustServerCertificate: false,
-        },
-      };
+      const result = await this.databaseService.executeStoredProcedure(
+        '[security].[xsp_CreatePendingRegistration]',
+        [
+          { name: 'Email', type: sql.NVarChar(255), value: data.email },
+          { name: 'FirstName', type: sql.NVarChar(100), value: data.firstName },
+          { name: 'LastName', type: sql.NVarChar(100), value: data.lastName },
+          { name: 'PasswordHash', type: sql.NVarChar(255), value: data.passwordHash },
+          { name: 'PasswordSalt', type: sql.NVarChar(255), value: data.passwordSalt },
+          { name: 'DateOfBirth', type: sql.Date, value: data.dateOfBirth },
+          { name: 'Gender', type: sql.TinyInt, value: data.gender },
+          { name: 'VerificationToken', type: sql.NVarChar(255), value: data.verificationToken },
+          { name: 'TokenExpiresAt', type: sql.DateTime2, value: data.tokenExpiresAt },
+        ],
+        [
+          { name: 'RegistrationId', type: sql.UniqueIdentifier },
+          { name: 'ErrorMessage', type: sql.NVarChar(500) },
+        ],
+      );
 
-      pool = await sql.connect(config);
-
-      // Ejecutar el stored procedure
-      const result = await pool
-        .request()
-        .input('Email', sql.NVarChar(255), data.email)
-        .input('FirstName', sql.NVarChar(100), data.firstName)
-        .input('LastName', sql.NVarChar(100), data.lastName)
-        .input('PasswordHash', sql.NVarChar(255), data.passwordHash)
-        .input('PasswordSalt', sql.NVarChar(255), data.passwordSalt)
-        .input('DateOfBirth', sql.Date, data.dateOfBirth)
-        .input('Gender', sql.TinyInt, data.gender)
-        .input('VerificationToken', sql.NVarChar(255), data.verificationToken)
-        .input('TokenExpiresAt', sql.DateTime2, data.tokenExpiresAt)
-        .output('RegistrationId', sql.UniqueIdentifier)
-        .output('ErrorMessage', sql.NVarChar(500))
-        .execute('[security].[xsp_CreatePendingRegistration]');
-
-      const registrationId = result.output.RegistrationId;
-      const errorMessage = result.output.ErrorMessage;
+      const { RegistrationId: registrationId, ErrorMessage: errorMessage } = result.output;
 
       // Verificar si hubo error en el SP
       if (errorMessage) {
         this.logger.error(`Error del SP: ${errorMessage}`);
 
-        // Si el email ya existe, lanzar ConflictException
-        if (errorMessage.toLowerCase().includes('ya existe') ||
-            errorMessage.toLowerCase().includes('already exists') ||
-            errorMessage.toLowerCase().includes('duplicado')) {
+        if (
+          errorMessage.toLowerCase().includes('ya existe') ||
+          errorMessage.toLowerCase().includes('already exists') ||
+          errorMessage.toLowerCase().includes('duplicado') ||
+          errorMessage.toLowerCase().includes('ya está registrado')
+        ) {
           throw new ConflictException('El email ya está registrado. Por favor, inicia sesión o usa otro email.');
         }
 
         throw new InternalServerErrorException(errorMessage);
       }
 
-      // Obtener los datos del recordset si está disponible
       const recordset = result.recordset?.[0];
 
       return {
@@ -178,25 +162,16 @@ export class RegisterService {
     } catch (error) {
       this.logger.error(`Error al crear registro pendiente: ${error.message}`);
 
-      // Re-lanzar si es una excepción conocida
       if (error instanceof ConflictException || error instanceof InternalServerErrorException) {
         throw error;
       }
 
       throw new InternalServerErrorException('Error al procesar el registro. Intenta nuevamente.');
-    } finally {
-      if (pool) {
-        await pool.close();
-      }
     }
   }
 
   /**
    * Envía el email de verificación al usuario
-   *
-   * @param email - Email del destinatario
-   * @param firstName - Nombre del usuario (para personalizar el saludo)
-   * @param token - Token de verificación
    */
   private async sendVerificationEmail(email: string, firstName: string, token: string): Promise<void> {
     const backendUrl = this.configService.get<string>('BACKEND_URL', 'http://localhost:3000');
@@ -219,11 +194,6 @@ export class RegisterService {
 
   /**
    * Genera el template HTML para el email de verificación
-   * Diseño profesional basado en el template de contacto existente
-   *
-   * @param firstName - Nombre del usuario
-   * @param verificationUrl - URL completa de verificación
-   * @returns HTML del email
    */
   private getVerificationEmailTemplate(firstName: string, verificationUrl: string): string {
     return `
@@ -238,34 +208,23 @@ export class RegisterService {
         <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: ${this.colors.gray};">
           <tr>
             <td align="center" style="padding: 40px 20px;">
-
-              <!-- Contenedor principal -->
               <table border="0" cellpadding="0" cellspacing="0" width="600" style="max-width: 600px; background-color: ${this.colors.white}; box-shadow: 0 4px 20px rgba(0,0,0,0.08); border-radius: 16px; overflow: hidden;">
-
-                <!-- Header con logo -->
                 <tr>
                   <td align="center" style="background: linear-gradient(135deg, ${this.colors.dark} 0%, ${this.colors.secondary} 100%); padding: 40px 30px;">
                     <img src="${this.logoUrl}" alt="Pool & Chill" width="150" style="display: block; max-width: 150px; height: auto; margin: 0 auto;" />
                   </td>
                 </tr>
-
-                <!-- Badge de verificación -->
                 <tr>
                   <td align="center" style="padding: 30px 30px 20px 30px;">
                     <span style="display: inline-block; background: ${this.colors.primary}; color: ${this.colors.white}; padding: 8px 20px; border-radius: 20px; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Verificación de Email</span>
                   </td>
                 </tr>
-
-                <!-- Contenido principal -->
                 <tr>
                   <td style="padding: 0 40px 30px 40px;">
                     <h1 style="margin: 0 0 20px 0; color: ${this.colors.textDark}; font-size: 24px; font-weight: 700; text-align: center;">¡Hola ${firstName}!</h1>
-
                     <p style="margin: 0 0 25px 0; color: ${this.colors.textDark}; font-size: 16px; line-height: 1.6; text-align: center;">
                       Gracias por registrarte en <strong>Pool & Chill</strong>. Para completar tu registro y activar tu cuenta, verifica tu dirección de email haciendo clic en el siguiente botón:
                     </p>
-
-                    <!-- Botón de verificación -->
                     <table border="0" cellpadding="0" cellspacing="0" width="100%">
                       <tr>
                         <td align="center" style="padding: 10px 0 30px 0;">
@@ -275,8 +234,6 @@ export class RegisterService {
                         </td>
                       </tr>
                     </table>
-
-                    <!-- Mensaje de expiración -->
                     <table border="0" cellpadding="0" cellspacing="0" width="100%">
                       <tr>
                         <td style="background-color: ${this.colors.light}; padding: 16px 20px; border-radius: 8px; border-left: 4px solid ${this.colors.primary};">
@@ -286,8 +243,6 @@ export class RegisterService {
                         </td>
                       </tr>
                     </table>
-
-                    <!-- Link alternativo -->
                     <p style="margin: 25px 0 0 0; color: ${this.colors.textLight}; font-size: 13px; line-height: 1.5; text-align: center;">
                       Si el botón no funciona, copia y pega este enlace en tu navegador:
                     </p>
@@ -296,8 +251,6 @@ export class RegisterService {
                     </p>
                   </td>
                 </tr>
-
-                <!-- Separador -->
                 <tr>
                   <td style="padding: 0 30px;">
                     <table border="0" cellpadding="0" cellspacing="0" width="100%">
@@ -307,8 +260,6 @@ export class RegisterService {
                     </table>
                   </td>
                 </tr>
-
-                <!-- Mensaje de seguridad -->
                 <tr>
                   <td style="padding: 25px 40px;">
                     <p style="margin: 0; color: ${this.colors.textLight}; font-size: 13px; line-height: 1.5; text-align: center;">
@@ -316,8 +267,6 @@ export class RegisterService {
                     </p>
                   </td>
                 </tr>
-
-                <!-- Footer -->
                 <tr>
                   <td align="center" style="background: linear-gradient(135deg, ${this.colors.dark} 0%, ${this.colors.secondary} 100%); padding: 35px 30px;">
                     <img src="${this.logoUrl}" alt="Pool & Chill" width="100" style="display: block; max-width: 100px; height: auto; margin: 0 auto 15px auto; opacity: 0.9;" />
@@ -326,10 +275,7 @@ export class RegisterService {
                     <p style="margin: 0; color: ${this.colors.primary}; font-size: 11px; font-weight: 500;">Sistema de notificaciones automáticas</p>
                   </td>
                 </tr>
-
               </table>
-              <!-- Fin contenedor principal -->
-
             </td>
           </tr>
         </table>
