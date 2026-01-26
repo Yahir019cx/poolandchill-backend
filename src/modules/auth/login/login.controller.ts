@@ -1,11 +1,13 @@
-import { Body, Controller, Post, HttpCode, HttpStatus } from '@nestjs/common';
+import { Body, Controller, Post, HttpCode, HttpStatus, UseGuards } from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
   ApiBody,
   ApiResponse,
-  ApiProperty,
+  ApiTooManyRequestsResponse,
 } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
+import { AuthThrottlerGuard } from '../guards/throttler.guard';
 import { LoginDto } from './dto/login.dto';
 import { LoginService } from './login.service';
 import { LoginResponse } from '../interfaces/login-response.interface';
@@ -24,6 +26,8 @@ export class LoginController {
    */
   @Post('login')
   @HttpCode(HttpStatus.OK)
+  @UseGuards(AuthThrottlerGuard)
+  @Throttle({ default: { limit: 5, ttl: 60000 } }) // 5 intentos por minuto por IP
   @ApiOperation({
     summary: 'Iniciar sesión con email y password',
     description: `
@@ -35,9 +39,13 @@ Autentica al usuario con sus credenciales y retorna los tokens de acceso.
 3. Retorna tokens y datos básicos del usuario
 
 **Seguridad:**
+- Rate limit: 5 intentos por minuto por IP
 - La cuenta se bloquea después de 5 intentos fallidos (15 minutos)
 - Los errores son genéricos para no revelar si el email existe
     `,
+  })
+  @ApiTooManyRequestsResponse({
+    description: 'Demasiados intentos de login. Espera 1 minuto.',
   })
   @ApiBody({
     type: LoginDto,

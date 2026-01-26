@@ -25,21 +25,39 @@ async function bootstrap() {
     credentials: true,
   });
 
-  const config = new DocumentBuilder()
-    .setTitle('Pool&Chill API')
-    .setDescription('Documentación oficial de la API NestJS')
-    .setVersion('1.0')
-    .addTag('poolchill')
-    .build();
-
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api/docs', app, document);
-
+  // Swagger solo en desarrollo (no exponer en producción)
   const configService = app.get(ConfigService);
+  const nodeEnv = configService.get<string>('NODE_ENV', 'development');
+
+  if (nodeEnv !== 'production') {
+    const config = new DocumentBuilder()
+      .setTitle('Pool&Chill API')
+      .setDescription('Documentación oficial de la API NestJS')
+      .setVersion('1.0')
+      .addBearerAuth(
+        {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT',
+          name: 'JWT',
+          description: 'Ingresa tu Access Token JWT',
+          in: 'header',
+        },
+        'JWT-auth',
+      )
+      .addTag('poolchill')
+      .build();
+
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup('api/docs', app, document);
+  }
+
   const port = configService.get<number>('PORT') || 3000;
 
   await app.listen(port);
   console.log(`Servidor corriendo en http://localhost:${port}`);
-  console.log(`Swagger disponible en http://localhost:${port}/api/docs`);
+  if (nodeEnv !== 'production') {
+    console.log(`Swagger disponible en http://localhost:${port}/api/docs`);
+  }
 }
 bootstrap();
