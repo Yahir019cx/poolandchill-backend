@@ -18,22 +18,24 @@ export class DatabaseService implements OnModuleDestroy {
    * Obtiene la configuración de conexión a SQL Server
    */
   private getConfig(): sql.config {
-    return {
-      server: this.configService.get<string>('DB_HOST', ''),
-      database: this.configService.get<string>('DB_NAME', ''),
-      user: this.configService.get<string>('DB_USER', ''),
-      password: this.configService.get<string>('DB_PASS', ''),
-      options: {
-        encrypt: true,
-        trustServerCertificate: false,
-      },
-      pool: {
-        max: 10,
-        min: 0,
-        idleTimeoutMillis: 30000,
-      },
-    };
-  }
+  return {
+    server: this.configService.get<string>('DB_HOST', ''),
+    port: 1433,
+    database: this.configService.get<string>('DB_NAME', ''),
+    user: this.configService.get<string>('DB_USER', ''),
+    password: this.configService.get<string>('DB_PASS', ''),
+    options: {
+      encrypt: true,
+      trustServerCertificate: false,
+    },
+    pool: {
+      max: 10,
+      min: 0,
+      idleTimeoutMillis: 30000,
+    },
+  };
+}
+
 
   /**
    * Obtiene una conexión del pool
