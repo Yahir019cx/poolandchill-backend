@@ -15,6 +15,8 @@ import {
  * - displayName: Nombre a mostrar (debe contener partes del nombre real)
  * - bio: Biografía del usuario
  * - profileImageUrl: URL de imagen en Firebase Storage
+ * - phoneNumber: Número de teléfono
+ * - location: Ubicación del usuario
  */
 export class UpdateProfileDto {
   @ApiProperty({
@@ -52,4 +54,26 @@ export class UpdateProfileDto {
     message: 'La URL de imagen debe ser de Firebase Storage',
   })
   profileImageUrl?: string;
+
+  @ApiProperty({
+    example: '5512345678',
+    description: 'Número de teléfono del usuario (mínimo 10 dígitos, se agregará + automáticamente si no viene)',
+    required: false,
+    minLength: 10,
+  })
+  @IsOptional()
+  @IsString({ message: 'El número de teléfono debe ser texto' })
+  @MinLength(10, { message: 'El número de teléfono debe tener al menos 10 caracteres' })
+  phoneNumber?: string;
+
+  @ApiProperty({
+    example: 'Ciudad de México, México',
+    description: 'Ubicación del usuario',
+    required: false,
+    maxLength: 200,
+  })
+  @IsOptional()
+  @IsString({ message: 'La ubicación debe ser texto' })
+  @MaxLength(200, { message: 'La ubicación no puede exceder 200 caracteres' })
+  location?: string;
 }

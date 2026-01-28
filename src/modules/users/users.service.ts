@@ -46,6 +46,7 @@ export interface UpdatedProfile {
   userId: string;
   email: string;
   phoneNumber: string | null;
+  location: string | null;
   isEmailVerified: boolean;
   isPhoneVerified: boolean;
   isAgeVerified: boolean;
@@ -122,11 +123,16 @@ export class UsersService {
         throw new NotFoundException('Usuario no encontrado');
       }
 
+      // Formatear phoneNumber: quitar +52 para retornar solo el número local
+      const phoneNumber = userData.PhoneNumber?.startsWith('+52')
+        ? userData.PhoneNumber.slice(3)
+        : userData.PhoneNumber || null;
+
       // Formatear la respuesta
       const profile: UserProfile = {
         userId: userData.UserId,
         email: userData.Email,
-        phoneNumber: userData.PhoneNumber || null,
+        phoneNumber,
         isEmailVerified: Boolean(userData.IsEmailVerified),
         isPhoneVerified: Boolean(userData.IsPhoneVerified),
         isAgeVerified: Boolean(userData.IsAgeVerified),
@@ -184,13 +190,24 @@ export class UsersService {
    */
   async updateProfile(userId: string, dto: UpdateProfileDto): Promise<UpdatedProfile> {
     // Validar que al menos un campo venga en el body
-    if (!dto.displayName && !dto.bio && !dto.profileImageUrl) {
+    if (!dto.displayName && !dto.bio && !dto.profileImageUrl && !dto.phoneNumber && !dto.location) {
       throw new BadRequestException(
-        'Debes proporcionar al menos un campo para actualizar (displayName, bio, o profileImageUrl)',
+        'Debes proporcionar al menos un campo para actualizar (displayName, bio, profileImageUrl, phoneNumber o location)',
       );
     }
 
     this.logger.log(`Actualizando perfil para usuario: ${userId}`);
+
+    // Formatear phoneNumber: agregar +52 si solo vienen 10 dígitos
+    let formattedPhone: string | null = null;
+    if (dto.phoneNumber) {
+      if (dto.phoneNumber.startsWith('+')) {
+        formattedPhone = dto.phoneNumber;
+      } else {
+        // Agregar código de país México (+52) por defecto
+        formattedPhone = `+52${dto.phoneNumber}`;
+      }
+    }
 
     try {
       const result = await this.databaseService.executeStoredProcedure(
@@ -200,6 +217,8 @@ export class UsersService {
           { name: 'DisplayName', type: sql.NVarChar(200), value: dto.displayName || null },
           { name: 'Bio', type: sql.NVarChar(500), value: dto.bio || null },
           { name: 'ProfileImageUrl', type: sql.NVarChar(500), value: dto.profileImageUrl || null },
+          { name: 'PhoneNumber', type: sql.NVarChar(20), value: formattedPhone },
+          { name: 'Location', type: sql.NVarChar(200), value: dto.location || null },
         ],
         [{ name: 'ErrorMessage', type: sql.NVarChar(500) }],
       );
@@ -233,11 +252,17 @@ export class UsersService {
         throw new InternalServerErrorException('Error al actualizar el perfil');
       }
 
+      // Formatear phoneNumber: quitar +52 para retornar solo el número local
+      const phoneNumber = updatedData.PhoneNumber?.startsWith('+52')
+        ? updatedData.PhoneNumber.slice(3)
+        : updatedData.PhoneNumber || null;
+
       // Formatear la respuesta
       const updatedProfile: UpdatedProfile = {
         userId: updatedData.UserId,
         email: updatedData.Email,
-        phoneNumber: updatedData.PhoneNumber || null,
+        phoneNumber,
+        location: updatedData.Location || null,
         isEmailVerified: Boolean(updatedData.IsEmailVerified),
         isPhoneVerified: Boolean(updatedData.IsPhoneVerified),
         isAgeVerified: Boolean(updatedData.IsAgeVerified),
@@ -292,6 +317,8 @@ export class UsersService {
           { name: 'ProfileImageUrl', type: sql.NVarChar(500), value: imageUrl },
           { name: 'DisplayName', type: sql.NVarChar(200), value: null },
           { name: 'Bio', type: sql.NVarChar(500), value: null },
+          { name: 'PhoneNumber', type: sql.NVarChar(20), value: null },
+          { name: 'Location', type: sql.NVarChar(200), value: null },
         ],
         [{ name: 'ErrorMessage', type: sql.NVarChar(500) }],
       );
