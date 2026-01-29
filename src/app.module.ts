@@ -4,6 +4,7 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { ContactModule } from './web/email/contact/contact.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
+import { PropertiesModule } from './modules/properties/properties.module';
 import { DatabaseModule } from './config/database.module';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
@@ -38,6 +39,7 @@ import { join } from 'path';
     ContactModule,
     AuthModule,
     UsersModule,
+    PropertiesModule,
   ],
 })
 export class AppModule {}
