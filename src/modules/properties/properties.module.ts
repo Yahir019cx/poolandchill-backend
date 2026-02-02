@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { PropertiesController } from './properties.controller';
+import { CatalogsController } from './catalogs.controller';
 import { PropertiesService } from './properties.service';
 import { AuthModule } from '../auth/auth.module';
 
@@ -8,17 +9,19 @@ import { AuthModule } from '../auth/auth.module';
  *
  * Gestiona el registro y administración de propiedades:
  * - POST /properties - Crear propiedad completa (wizard)
- * - GET /properties - Listar mis propiedades
- * - GET /properties/:id - Obtener propiedad
+ * - GET /properties/my - Listar propiedades del dueño
+ * - GET /properties/search - Buscar propiedades
  * - PATCH /properties/:id/status - Pausar/Reactivar
  * - DELETE /properties/:id - Eliminar
- * - GET /properties/catalogs/amenities - Catálogo amenidades
- * - GET /properties/catalogs/states - Catálogo estados
- * - GET /properties/catalogs/cities/:stateId - Catálogo ciudades
+ *
+ * Catálogos (en /catalogs):
+ * - GET /catalogs/amenities - Catálogo amenidades
+ * - GET /catalogs/states - Catálogo estados
+ * - GET /catalogs/cities/:stateId - Catálogo ciudades
  */
 @Module({
   imports: [AuthModule],
-  controllers: [PropertiesController],
+  controllers: [PropertiesController, CatalogsController],
   providers: [PropertiesService],
   exports: [PropertiesService],
 })

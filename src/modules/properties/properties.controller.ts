@@ -12,7 +12,6 @@ import {
   HttpCode,
   HttpStatus,
   ParseUUIDPipe,
-  ParseIntPipe,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -24,7 +23,7 @@ import {
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PropertiesService } from './properties.service';
-import { CreatePropertyDto, ChangeStatusDto } from './dto';
+import { CreatePropertyDto, ChangeStatusDto, SearchPropertiesDto } from './dto';
 
 @ApiTags('Properties')
 @Controller('properties')
@@ -74,16 +73,52 @@ export class PropertiesController {
   }
 
   // ══════════════════════════════════════════════════
-  // CONSULTAS
+  // BÚSQUEDA PÚBLICA
   // ══════════════════════════════════════════════════
 
-  @Get()
+  @Get('search')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Buscar propiedades',
+    description: `
+      Busca propiedades con filtros. Endpoint público.
+      Si no se envían filtros, retorna todas las propiedades activas paginadas.
+    `,
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Lista de propiedades',
+    schema: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean', example: true },
+        data: {
+          type: 'object',
+          properties: {
+            totalCount: { type: 'number', example: 100 },
+            page: { type: 'number', example: 1 },
+            pageSize: { type: 'number', example: 20 },
+            properties: { type: 'array', items: { type: 'object' } },
+          },
+        },
+      },
+    },
+  })
+  async search(@Query() dto: SearchPropertiesDto) {
+    return this.propertiesService.searchProperties(dto);
+  }
+
+  // ══════════════════════════════════════════════════
+  // CONSULTAS (OWNER)
+  // ══════════════════════════════════════════════════
+
+  @Get('my')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('JWT-auth')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: 'Listar mis propiedades',
-    description: 'Obtiene las propiedades del usuario autenticado con paginación.',
+    summary: 'Listar propiedades del dueño',
+    description: 'Obtiene las propiedades del dueño autenticado con paginación.',
   })
   @ApiQuery({ name: 'status', required: false, type: Number, description: 'Filtrar por estado' })
   @ApiQuery({ name: 'page', required: false, type: Number, description: 'Número de página (default: 1)' })
@@ -120,62 +155,6 @@ export class PropertiesController {
       page || 1,
       pageSize || 10,
     );
-  }
-
-  @Get('catalogs/amenities')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({
-    summary: 'Obtener catálogo de amenidades',
-    description: 'Retorna las amenidades disponibles, opcionalmente filtradas por categoría.',
-  })
-  @ApiQuery({
-    name: 'category',
-    required: false,
-    type: String,
-    description: 'Categoría: pool, cabin, camping',
-  })
-  async getAmenities(@Query('category') category?: string) {
-    return this.propertiesService.getAmenities(category);
-  }
-
-  @Get('catalogs/states')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({
-    summary: 'Obtener catálogo de estados',
-    description: 'Retorna la lista de estados disponibles.',
-  })
-  async getStates() {
-    return this.propertiesService.getStates();
-  }
-
-  @Get('catalogs/cities/:stateId')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({
-    summary: 'Obtener ciudades por estado',
-    description: 'Retorna las ciudades de un estado específico.',
-  })
-  @ApiParam({ name: 'stateId', type: Number, description: 'ID del estado' })
-  async getCities(@Param('stateId', ParseIntPipe) stateId: number) {
-    return this.propertiesService.getCities(stateId);
-  }
-
-  @Get(':id')
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth('JWT-auth')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({
-    summary: 'Obtener propiedad por ID',
-    description: 'Obtiene los detalles completos de una propiedad.',
-  })
-  @ApiParam({ name: 'id', type: String, description: 'UUID de la propiedad' })
-  @ApiResponse({ status: 200, description: 'Propiedad encontrada' })
-  @ApiResponse({ status: 404, description: 'Propiedad no encontrada' })
-  async getProperty(
-    @Request() req: any,
-    @Param('id', ParseUUIDPipe) id: string,
-  ) {
-    const userId = req.user.userId;
-    return this.propertiesService.getProperty(userId, id);
   }
 
   // ══════════════════════════════════════════════════

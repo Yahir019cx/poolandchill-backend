@@ -2,7 +2,6 @@ import {
   Injectable,
   Logger,
   BadRequestException,
-  NotFoundException,
   InternalServerErrorException,
 } from '@nestjs/common';
 import * as sql from 'mssql';
@@ -12,6 +11,7 @@ import {
   PoolAmenitiesDto,
   CabinAmenitiesDto,
   CampingAmenitiesDto,
+  SearchPropertiesDto,
 } from './dto';
 
 @Injectable()
@@ -346,7 +346,58 @@ export class PropertiesService {
   }
 
   // ══════════════════════════════════════════════════
-  // CONSULTAS
+  // BÚSQUEDA PÚBLICA
+  // ══════════════════════════════════════════════════
+
+  /**
+   * Buscar propiedades con filtros (público)
+   */
+  async searchProperties(dto: SearchPropertiesDto) {
+    const result = await this.databaseService.executeStoredProcedure(
+      '[property].[xsp_SearchProperties]',
+      [
+        { name: 'HasPool', type: sql.Bit, value: dto.hasPool ?? null },
+        { name: 'HasCabin', type: sql.Bit, value: dto.hasCabin ?? null },
+        { name: 'HasCamping', type: sql.Bit, value: dto.hasCamping ?? null },
+        { name: 'ID_State', type: sql.TinyInt, value: dto.stateId ?? null },
+        { name: 'ID_City', type: sql.Int, value: dto.cityId ?? null },
+        { name: 'MinPrice', type: sql.Decimal(10, 2), value: dto.minPrice ?? null },
+        { name: 'MaxPrice', type: sql.Decimal(10, 2), value: dto.maxPrice ?? null },
+        { name: 'SearchText', type: sql.NVarChar(100), value: dto.search ?? null },
+        { name: 'SortBy', type: sql.VarChar(20), value: dto.sortBy ?? 'newest' },
+        { name: 'PageNumber', type: sql.Int, value: dto.page ?? 1 },
+        { name: 'PageSize', type: sql.Int, value: dto.pageSize ?? 20 },
+      ],
+      [],
+    );
+
+    const properties = result.recordset || [];
+    const totalCount = properties[0]?.TotalCount || 0;
+
+    return {
+      success: true,
+      data: {
+        totalCount,
+        page: dto.page ?? 1,
+        pageSize: dto.pageSize ?? 20,
+        properties: properties.map((p: any) => ({
+          propertyId: p.ID_Property,
+          propertyName: p.PropertyName,
+          hasPool: p.HasPool,
+          hasCabin: p.HasCabin,
+          hasCamping: p.HasCamping,
+          location: p.Location,
+          priceFrom: p.PriceFrom,
+          images: p.Images ? JSON.parse(p.Images) : [],
+          rating: p.Rating,
+          reviewCount: p.ReviewCount,
+        })),
+      },
+    };
+  }
+
+  // ══════════════════════════════════════════════════
+  // CONSULTAS (PRIVADAS - OWNER)
   // ══════════════════════════════════════════════════
 
   /**
@@ -358,19 +409,20 @@ export class PropertiesService {
     page: number = 1,
     pageSize: number = 10,
   ) {
-    const result = await this.databaseService.executeStoredProcedure(
-      '[property].[xsp_GetOwnerProperties]',
-      [
-        { name: 'ID_Owner', type: sql.UniqueIdentifier, value: userId },
-        { name: 'ID_Status', type: sql.TinyInt, value: status || null },
-        { name: 'PageNumber', type: sql.Int, value: page },
-        { name: 'PageSize', type: sql.Int, value: pageSize },
-      ],
-      [],
-    );
+    const pool = await this.databaseService.getConnection();
+    const request = pool.request();
 
-    const properties = result.recordset || [];
-    const totalCount = properties[0]?.TotalCount || 0;
+    request.input('ID_Owner', sql.UniqueIdentifier, userId);
+    request.input('ID_Status', sql.TinyInt, status || null);
+    request.input('PageNumber', sql.Int, page);
+    request.input('PageSize', sql.Int, pageSize);
+
+    const result = await request.execute('[property].[xsp_GetOwnerProperties]');
+
+    // El SP retorna 2 result sets: [0] = TotalCount, [1] = Properties
+    const recordsets = result.recordsets as any[];
+    const totalCount = recordsets[0]?.[0]?.TotalCount || 0;
+    const properties = recordsets[1] || [];
 
     return {
       success: true,
@@ -391,63 +443,6 @@ export class PropertiesService {
           state: p.StateName,
           createdAt: p.CreatedAt,
         })),
-      },
-    };
-  }
-
-  /**
-   * Obtener propiedad por ID
-   */
-  async getProperty(userId: string, propertyId: string) {
-    const pool = await this.databaseService.getConnection();
-    const request = pool.request();
-
-    request.input('ID_Property', sql.UniqueIdentifier, propertyId);
-    request.input('ID_Owner', sql.UniqueIdentifier, userId);
-
-    const result = await request.execute('[property].[xsp_GetPropertyByID]');
-
-    // El SP retorna 6 result sets
-    const recordsets = result.recordsets as any[];
-    const [propertyData, poolData, cabinData, campingData, rulesData, imagesData] = recordsets;
-
-    if (!propertyData || propertyData.length === 0) {
-      throw new NotFoundException('Propiedad no encontrada');
-    }
-
-    const property = propertyData[0];
-
-    return {
-      success: true,
-      data: {
-        property: {
-          propertyId: property.ID_Property,
-          propertyName: property.PropertyName,
-          description: property.Description,
-          status: property.ID_Status,
-          statusName: property.StatusName,
-          hasPool: property.HasPool,
-          hasCabin: property.HasCabin,
-          hasCamping: property.HasCamping,
-          createdAt: property.CreatedAt,
-        },
-        location: {
-          street: property.Street,
-          exteriorNumber: property.ExteriorNumber,
-          interiorNumber: property.InteriorNumber,
-          neighborhood: property.Neighborhood,
-          zipCode: property.ZipCode,
-          city: property.CityName,
-          state: property.StateName,
-          latitude: property.Latitude,
-          longitude: property.Longitude,
-          formattedAddress: property.FormattedAddress,
-        },
-        pool: poolData?.[0] || null,
-        cabin: cabinData?.[0] || null,
-        camping: campingData?.[0] || null,
-        rules: rulesData || [],
-        images: imagesData || [],
       },
     };
   }
@@ -521,10 +516,11 @@ export class PropertiesService {
    * Obtener amenidades por categoría
    */
   async getAmenities(category?: string) {
+    console.log('[getAmenities] Llamado con category:', category || 'todas');
     const result = await this.databaseService.executeStoredProcedure(
       '[catalog].[xsp_GetAmenitiesByCategory]',
       [
-        { name: 'CategoryCode', type: sql.VarChar(20), value: category || null },
+        { name: 'CategoryCode', type: sql.VarChar(100), value: category || null },
       ],
       [],
     );
