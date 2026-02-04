@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsObject } from 'class-validator';
+import { IsString, IsOptional, IsObject, IsNumber } from 'class-validator';
 
 /**
  * DTO para el webhook de Didit
@@ -14,6 +14,22 @@ export class DiditWebhookDto {
   @IsOptional()
   @IsString()
   vendor_data?: string; // Nuestro userId
+
+  @IsOptional()
+  @IsString()
+  webhook_type?: string;
+
+  @IsOptional()
+  @IsNumber()
+  timestamp?: number;
+
+  @IsOptional()
+  @IsNumber()
+  created_at?: number;
+
+  @IsOptional()
+  @IsString()
+  workflow_id?: string;
 
   @IsOptional()
   @IsObject()
