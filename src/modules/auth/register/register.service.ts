@@ -246,12 +246,6 @@ export class RegisterService {
                         </td>
                       </tr>
                     </table>
-                    <p style="margin: 25px 0 0 0; color: ${this.colors.textLight}; font-size: 13px; line-height: 1.5; text-align: center;">
-                      Si el botón no funciona, copia y pega este enlace en tu navegador:
-                    </p>
-                    <p style="margin: 10px 0 0 0; color: ${this.colors.primary}; font-size: 12px; word-break: break-all; text-align: center;">
-                      <a href="${verificationUrl}" style="color: ${this.colors.primary}; text-decoration: underline;">${verificationUrl}</a>
-                    </p>
                   </td>
                 </tr>
                 <tr>
