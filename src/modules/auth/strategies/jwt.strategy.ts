@@ -29,13 +29,13 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
    * Este método es llamado automáticamente por Passport después de verificar la firma del token
    */
   async validate(payload: JwtPayload): Promise<JwtUser> {
-    if (!payload.sub || !payload.email) {
+    if (!payload.sub) {
       throw new UnauthorizedException('Token inválido');
     }
 
     return {
       userId: payload.sub,
-      email: payload.email,
+      email: payload.email || '',
       roles: payload.roles || [],
     };
   }

@@ -45,8 +45,9 @@ export interface RegisterResponse {
  */
 export interface VerificationResponse {
   success: boolean;
-  userId: number;
+  userId: string;
   email: string;
   firstName: string;
   lastName: string;
+  sessionToken: string; // Token temporal de un solo uso
 }

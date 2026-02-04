@@ -55,7 +55,7 @@ export class RegisterService {
    * 4. Envía email de verificación
    */
   async register(registerDto: RegisterDto): Promise<RegisterResponse> {
-    const { email, firstName, lastName, password, dateOfBirth, gender } = registerDto;
+    const { email, firstName, lastName, phoneNumber, password, dateOfBirth, gender } = registerDto;
 
     this.logger.log(`Iniciando registro para: ${email}`);
 
@@ -76,6 +76,7 @@ export class RegisterService {
       email,
       firstName,
       lastName,
+      phoneNumber,
       passwordHash,
       passwordSalt: salt,
       dateOfBirth: dateOfBirth || null,
@@ -103,6 +104,7 @@ export class RegisterService {
     email: string;
     firstName: string;
     lastName: string;
+    phoneNumber: string;
     passwordHash: string;
     passwordSalt: string;
     dateOfBirth: string | null;
@@ -117,6 +119,7 @@ export class RegisterService {
           { name: 'Email', type: sql.NVarChar(255), value: data.email },
           { name: 'FirstName', type: sql.NVarChar(100), value: data.firstName },
           { name: 'LastName', type: sql.NVarChar(100), value: data.lastName },
+          { name: 'PhoneNumber', type: sql.NVarChar(20), value: data.phoneNumber },
           { name: 'PasswordHash', type: sql.NVarChar(255), value: data.passwordHash },
           { name: 'PasswordSalt', type: sql.NVarChar(255), value: data.passwordSalt },
           { name: 'DateOfBirth', type: sql.Date, value: data.dateOfBirth },

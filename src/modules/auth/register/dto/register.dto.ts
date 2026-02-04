@@ -42,6 +42,14 @@ export class RegisterDto {
   lastName: string;
 
   @ApiProperty({
+    example: '+5215512345678',
+    description: 'Número de teléfono con código de país',
+  })
+  @IsString({ message: 'El teléfono debe ser texto' })
+  @IsNotEmpty({ message: 'El teléfono es obligatorio' })
+  phoneNumber: string;
+
+  @ApiProperty({
     example: 'Password123',
     description: 'Contraseña: mínimo 8 caracteres, debe incluir mayúsculas, minúsculas y números',
     minLength: 8,

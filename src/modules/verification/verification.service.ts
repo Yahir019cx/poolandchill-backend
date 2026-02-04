@@ -13,7 +13,7 @@ import { DiditWebhookDto } from './dto';
 @Injectable()
 export class VerificationService {
   private readonly logger = new Logger(VerificationService.name);
-  private readonly diditApiUrl = 'https://api.didit.me/v1';
+  private readonly diditApiUrl = 'https://verification.didit.me/v2';
 
   constructor(
     private readonly databaseService: DatabaseService,
@@ -59,11 +59,12 @@ export class VerificationService {
       }
 
       // Crear nueva sesión en Didit
-      const response = await fetch(`${this.diditApiUrl}/sessions`, {
+      const response = await fetch(`${this.diditApiUrl}/session/`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`,
+          'accept': 'application/json',
+          'content-type': 'application/json',
+          'x-api-key': apiKey,
         },
         body: JSON.stringify({
           workflow_id: workflowId,
@@ -75,7 +76,9 @@ export class VerificationService {
       if (!response.ok) {
         const errorBody = await response.text();
         this.logger.error(`Error de Didit: ${response.status} - ${errorBody}`);
-        throw new BadRequestException('Error al crear sesión de verificación');
+        this.logger.error(`Request details - URL: ${this.diditApiUrl}/session/`);
+        this.logger.error(`Request details - Headers: ${JSON.stringify({ 'x-api-key': apiKey.substring(0, 10) + '...', workflowId, callbackUrl })}`);
+        throw new BadRequestException(`Error al crear sesión de verificación: ${response.status} - ${errorBody}`);
       }
 
       const diditResponse = await response.json();
