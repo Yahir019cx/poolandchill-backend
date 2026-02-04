@@ -39,7 +39,7 @@ export class RegisterService {
 
   /** URL del logo de Pool & Chill */
   private readonly logoUrl =
-    'https://firebasestorage.googleapis.com/v0/b/poolandchillapp.firebasestorage.app/o/Brand%2FlogoLT.png?alt=media&token=85af76c9-5a06-467c-a7da-729025ba753a';
+    'https://firebasestorage.googleapis.com/v0/b/poolandchillapp.firebasestorage.app/o/Brand%2FLogoNewPC.png?alt=media&token=dd61cc81-f322-4833-813d-337b473d1e68';
 
   constructor(
     private readonly configService: ConfigService,
@@ -241,7 +241,7 @@ export class RegisterService {
                       <tr>
                         <td style="background-color: ${this.colors.light}; padding: 16px 20px; border-radius: 8px; border-left: 4px solid ${this.colors.primary};">
                           <p style="margin: 0; color: ${this.colors.textDark}; font-size: 14px; line-height: 1.5;">
-                            <strong>⏰ Importante:</strong> Este enlace es válido por <strong>24 horas</strong>. Si no verificas tu cuenta antes de que expire, tendrás que registrarte nuevamente.
+                            <strong>Importante:</strong> Este enlace es válido por <strong>24 horas</strong>. Si no verificas tu cuenta antes de que expire, tendrás que registrarte nuevamente.
                           </p>
                         </td>
                       </tr>
