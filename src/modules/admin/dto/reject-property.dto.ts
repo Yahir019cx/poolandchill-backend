@@ -1,7 +1,14 @@
-import { IsString, MinLength } from 'class-validator';
+import { IsString, MinLength, IsUUID } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class RejectPropertyDto {
+  @ApiProperty({
+    description: 'UUID de la propiedad a rechazar',
+    example: '550e8400-e29b-41d4-a716-446655440000',
+  })
+  @IsUUID('4', { message: 'El ID de la propiedad debe ser un UUID válido' })
+  propertyId: string;
+
   @ApiProperty({
     description: 'Motivo del rechazo',
     example: 'Las imágenes no corresponden a la propiedad descrita.',

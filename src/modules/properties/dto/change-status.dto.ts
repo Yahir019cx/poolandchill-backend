@@ -1,4 +1,4 @@
-import { IsInt, IsIn } from 'class-validator';
+import { IsInt, IsIn, IsUUID } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 /**
@@ -6,6 +6,13 @@ import { ApiProperty } from '@nestjs/swagger';
  * Solo permite: 3 = Active, 4 = Paused
  */
 export class ChangeStatusDto {
+  @ApiProperty({
+    description: 'UUID de la propiedad',
+    example: '550e8400-e29b-41d4-a716-446655440000',
+  })
+  @IsUUID('4', { message: 'El ID de la propiedad debe ser un UUID válido' })
+  propertyId: string;
+
   @ApiProperty({
     description: 'Nuevo estado: 3 = Active, 4 = Paused',
     example: 4,

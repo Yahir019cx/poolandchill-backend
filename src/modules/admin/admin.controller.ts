@@ -2,27 +2,24 @@ import {
   Controller,
   Get,
   Post,
-  Param,
   Body,
   Query,
   UseGuards,
   Request,
   HttpCode,
   HttpStatus,
-  ParseUUIDPipe,
 } from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
   ApiResponse,
   ApiBearerAuth,
-  ApiParam,
   ApiQuery,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AdminRoleGuard } from './guards/admin-role.guard';
 import { AdminService } from './admin.service';
-import { RejectPropertyDto, SuspendPropertyDto } from './dto';
+import { ApprovePropertyDto, RejectPropertyDto, SuspendPropertyDto } from './dto';
 
 @ApiTags('Admin - Properties')
 @Controller('admin/properties')
@@ -66,13 +63,12 @@ export class AdminController {
     return this.adminService.getPendingProperties(page || 1, pageSize || 20);
   }
 
-  @Post(':id/approve')
+  @Post('approve')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Aprobar propiedad',
     description: 'Aprueba una propiedad pendiente de revisión. Cambia el estado a ACTIVE.',
   })
-  @ApiParam({ name: 'id', type: String, description: 'UUID de la propiedad' })
   @ApiResponse({
     status: 200,
     description: 'Propiedad aprobada',
@@ -88,19 +84,18 @@ export class AdminController {
   @ApiResponse({ status: 403, description: 'No tienes permisos para esta acción' })
   async approveProperty(
     @Request() req: any,
-    @Param('id', ParseUUIDPipe) propertyId: string,
+    @Body() dto: ApprovePropertyDto,
   ) {
     const adminId = req.user.userId;
-    return this.adminService.approveProperty(adminId, propertyId);
+    return this.adminService.approveProperty(adminId, dto.propertyId);
   }
 
-  @Post(':id/reject')
+  @Post('reject')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Rechazar propiedad',
     description: 'Rechaza una propiedad pendiente de revisión. Requiere motivo.',
   })
-  @ApiParam({ name: 'id', type: String, description: 'UUID de la propiedad' })
   @ApiResponse({
     status: 200,
     description: 'Propiedad rechazada',
@@ -116,20 +111,18 @@ export class AdminController {
   @ApiResponse({ status: 403, description: 'No tienes permisos para esta acción' })
   async rejectProperty(
     @Request() req: any,
-    @Param('id', ParseUUIDPipe) propertyId: string,
     @Body() dto: RejectPropertyDto,
   ) {
     const adminId = req.user.userId;
-    return this.adminService.rejectProperty(adminId, propertyId, dto.reason);
+    return this.adminService.rejectProperty(adminId, dto.propertyId, dto.reason);
   }
 
-  @Post(':id/suspend')
+  @Post('suspend')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Suspender propiedad',
     description: 'Suspende una propiedad activa o pausada. Requiere motivo.',
   })
-  @ApiParam({ name: 'id', type: String, description: 'UUID de la propiedad' })
   @ApiResponse({
     status: 200,
     description: 'Propiedad suspendida',
@@ -145,10 +138,9 @@ export class AdminController {
   @ApiResponse({ status: 403, description: 'No tienes permisos para esta acción' })
   async suspendProperty(
     @Request() req: any,
-    @Param('id', ParseUUIDPipe) propertyId: string,
     @Body() dto: SuspendPropertyDto,
   ) {
     const adminId = req.user.userId;
-    return this.adminService.suspendProperty(adminId, propertyId, dto.reason);
+    return this.adminService.suspendProperty(adminId, dto.propertyId, dto.reason);
   }
 }

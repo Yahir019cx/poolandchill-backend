@@ -2,28 +2,23 @@ import {
   Controller,
   Get,
   Post,
-  Patch,
-  Delete,
   Body,
-  Param,
   Query,
   UseGuards,
   Request,
   HttpCode,
   HttpStatus,
-  ParseUUIDPipe,
 } from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
   ApiResponse,
   ApiBearerAuth,
-  ApiParam,
   ApiQuery,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PropertiesService } from './properties.service';
-import { CreatePropertyDto, ChangeStatusDto, SearchPropertiesDto } from './dto';
+import { CreatePropertyDto, ChangeStatusDto, DeletePropertyDto, SearchPropertiesDto } from './dto';
 
 @ApiTags('Properties')
 @Controller('properties')
@@ -158,45 +153,44 @@ export class PropertiesController {
   }
 
   // ══════════════════════════════════════════════════
-  // GESTIÓN DE ESTADO
+  // GESTIÓN DE ESTADO (OWNER)
   // ══════════════════════════════════════════════════
 
-  @Patch(':id/status')
+  @Post('owner/status')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('JWT-auth')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: 'Cambiar estado de propiedad',
-    description: 'Pausar (4) o reactivar (3) una propiedad.',
+    summary: 'Cambiar estado de propiedad (Owner)',
+    description: 'Pausar (4) o reactivar (3) una propiedad. Solo el dueño puede cambiar el estado.',
   })
-  @ApiParam({ name: 'id', type: String, description: 'UUID de la propiedad' })
   @ApiResponse({ status: 200, description: 'Estado cambiado exitosamente' })
   @ApiResponse({ status: 400, description: 'Error al cambiar estado' })
+  @ApiResponse({ status: 403, description: 'No tienes permisos para esta acción' })
   async changeStatus(
     @Request() req: any,
-    @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: ChangeStatusDto,
   ) {
     const userId = req.user.userId;
-    return this.propertiesService.changeStatus(userId, id, dto.status);
+    return this.propertiesService.changeStatus(userId, dto.propertyId, dto.status);
   }
 
-  @Delete(':id')
+  @Post('owner/delete')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('JWT-auth')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: 'Eliminar propiedad',
-    description: 'Elimina una propiedad (soft delete).',
+    summary: 'Eliminar propiedad (Owner)',
+    description: 'Elimina una propiedad (soft delete). Solo el dueño puede eliminar.',
   })
-  @ApiParam({ name: 'id', type: String, description: 'UUID de la propiedad' })
   @ApiResponse({ status: 200, description: 'Propiedad eliminada' })
   @ApiResponse({ status: 400, description: 'Error al eliminar' })
+  @ApiResponse({ status: 403, description: 'No tienes permisos para esta acción' })
   async delete(
     @Request() req: any,
-    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: DeletePropertyDto,
   ) {
     const userId = req.user.userId;
-    return this.propertiesService.deleteProperty(userId, id);
+    return this.propertiesService.deleteProperty(userId, dto.propertyId);
   }
 }
