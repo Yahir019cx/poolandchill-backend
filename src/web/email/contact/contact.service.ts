@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { GraphMailService } from '../graph-mail.service';
+import { ZohoMailService } from '../zoho-mail.service';
 import { ContactDto } from '../dto/contact.dto';
 
 @Injectable()
@@ -18,7 +18,7 @@ export class ContactService {
 
   private readonly logoUrl = 'https://firebasestorage.googleapis.com/v0/b/poolandchillapp.firebasestorage.app/o/Brand%2FlogoLT.png?alt=media&token=85af76c9-5a06-467c-a7da-729025ba753a';
 
-  constructor(private readonly graphMail: GraphMailService) {}
+  constructor(private readonly zohoMail: ZohoMailService) {}
 
   async sendContactMail(data: ContactDto) {
     const aliasReceptor = 'contacto@poolandchill.com.mx';
@@ -41,7 +41,7 @@ export class ContactService {
       }));
     }
 
-    return await this.graphMail.sendMail(aliasReceptor, subject, htmlBody, attachments);
+    return await this.zohoMail.sendMail(aliasReceptor, subject, htmlBody, attachments);
   }
 
   private getEmailTemplate(data: ContactDto, aliasReceptor: string): string {

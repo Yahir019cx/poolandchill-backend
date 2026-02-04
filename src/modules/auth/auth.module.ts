@@ -28,7 +28,7 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 
 // Shared Services
-import { GraphMailService } from '../../web/email/graph-mail.service';
+import { ZohoMailService } from '../../web/email/zoho-mail.service';
 
 /**
  * Módulo de autenticación
@@ -77,7 +77,7 @@ import { GraphMailService } from '../../web/email/graph-mail.service';
     LogoutService,
     JwtStrategy,
     JwtAuthGuard,
-    GraphMailService,
+    ZohoMailService,
   ],
   exports: [
     RegisterService,

@@ -9,7 +9,7 @@ import * as bcrypt from 'bcrypt';
 import * as sql from 'mssql';
 import { v4 as uuidv4 } from 'uuid';
 import { RegisterDto } from './dto/register.dto';
-import { GraphMailService } from '../../../web/email/graph-mail.service';
+import { ZohoMailService } from '../../../web/email/zoho-mail.service';
 import { DatabaseService } from '../../../config/database.config';
 import {
   RegisterResponse,
@@ -43,7 +43,7 @@ export class RegisterService {
 
   constructor(
     private readonly configService: ConfigService,
-    private readonly graphMailService: GraphMailService,
+    private readonly zohoMailService: ZohoMailService,
     private readonly databaseService: DatabaseService,
   ) {}
 
@@ -180,7 +180,7 @@ export class RegisterService {
     const htmlContent = this.getVerificationEmailTemplate(firstName, verificationUrl);
 
     try {
-      await this.graphMailService.sendMail(
+      await this.zohoMailService.sendMail(
         email,
         'Verifica tu cuenta en Pool & Chill',
         htmlContent,
