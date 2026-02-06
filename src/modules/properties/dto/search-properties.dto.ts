@@ -3,81 +3,80 @@ import { Transform } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class SearchPropertiesDto {
-  @ApiPropertyOptional({ description: 'Filtrar por alberca', example: true })
+  @ApiPropertyOptional({ description: 'Filtrar propiedades con alberca (true = solo con alberca)' })
   @IsOptional()
-  @Transform(({ value }) => value === 'true' || value === true)
+  @Transform(({ value }) => (value === undefined ? undefined : value === 'true' || value === true))
   @IsBoolean()
   hasPool?: boolean;
 
-  @ApiPropertyOptional({ description: 'Filtrar por cabaña', example: true })
+  @ApiPropertyOptional({ description: 'Filtrar propiedades con cabaña (true = solo con cabaña)' })
   @IsOptional()
-  @Transform(({ value }) => value === 'true' || value === true)
+  @Transform(({ value }) => (value === undefined ? undefined : value === 'true' || value === true))
   @IsBoolean()
   hasCabin?: boolean;
 
-  @ApiPropertyOptional({ description: 'Filtrar por camping', example: false })
+  @ApiPropertyOptional({ description: 'Filtrar propiedades con camping (true = solo con camping)' })
   @IsOptional()
-  @Transform(({ value }) => value === 'true' || value === true)
+  @Transform(({ value }) => (value === undefined ? undefined : value === 'true' || value === true))
   @IsBoolean()
   hasCamping?: boolean;
 
-  @ApiPropertyOptional({ description: 'ID del estado', example: 1 })
+  @ApiPropertyOptional({ description: 'ID del estado' })
   @IsOptional()
-  @Transform(({ value }) => parseInt(value))
+  @Transform(({ value }) => (value ? parseInt(value) : undefined))
   @IsInt()
   @Min(1)
   stateId?: number;
 
-  @ApiPropertyOptional({ description: 'ID de la ciudad', example: 1 })
+  @ApiPropertyOptional({ description: 'ID de la ciudad' })
   @IsOptional()
-  @Transform(({ value }) => parseInt(value))
+  @Transform(({ value }) => (value ? parseInt(value) : undefined))
   @IsInt()
   @Min(1)
   cityId?: number;
 
-  @ApiPropertyOptional({ description: 'Precio mínimo', example: 500 })
+  @ApiPropertyOptional({ description: 'Precio mínimo' })
   @IsOptional()
-  @Transform(({ value }) => parseFloat(value))
+  @Transform(({ value }) => (value ? parseFloat(value) : undefined))
   @IsNumber()
   @Min(0)
   minPrice?: number;
 
-  @ApiPropertyOptional({ description: 'Precio máximo', example: 5000 })
+  @ApiPropertyOptional({ description: 'Precio máximo' })
   @IsOptional()
-  @Transform(({ value }) => parseFloat(value))
+  @Transform(({ value }) => (value ? parseFloat(value) : undefined))
   @IsNumber()
   @Min(0)
   maxPrice?: number;
 
-  @ApiPropertyOptional({ description: 'Buscar por nombre', example: 'Rancho' })
+  @ApiPropertyOptional({ description: 'Buscar por nombre' })
   @IsOptional()
   @IsString()
   search?: string;
 
-  @ApiPropertyOptional({ description: 'IDs de amenidades separados por coma', example: '1,5,12' })
+  @ApiPropertyOptional({ description: 'IDs de amenidades separados por coma' })
   @IsOptional()
   @IsString()
   amenities?: string;
 
   @ApiPropertyOptional({
     description: 'Ordenar por',
-    example: 'newest',
-    enum: ['price_asc', 'price_desc', 'rating', 'newest']
+    enum: ['price_asc', 'price_desc', 'rating', 'newest'],
   })
   @IsOptional()
   @IsString()
   sortBy?: string;
 
-  @ApiPropertyOptional({ description: 'Número de página', example: 1, default: 1 })
+  @ApiPropertyOptional({ description: 'Número de página', default: 1 })
   @IsOptional()
-  @Transform(({ value }) => parseInt(value))
+  @Transform(({ value }) => (value ? parseInt(value) : undefined))
   @IsInt()
   @Min(1)
   page?: number;
 
-  @ApiPropertyOptional({ description: 'Tamaño de página', example: 20, default: 20 })
+  @ApiPropertyOptional({ description: 'Tamaño de página', default: 20 })
   @IsOptional()
-  @Transform(({ value }) => parseInt(value))
+  @Transform(({ value }) => (value ? parseInt(value) : undefined))
   @IsInt()
   @Min(1)
   pageSize?: number;

@@ -120,7 +120,7 @@ export class PropertiesController {
   @ApiQuery({ name: 'pageSize', required: false, type: Number, description: 'Tamaño de página (default: 10)' })
   @ApiResponse({
     status: 200,
-    description: 'Lista de propiedades',
+    description: 'Lista de propiedades del dueño',
     schema: {
       type: 'object',
       properties: {
@@ -131,7 +131,52 @@ export class PropertiesController {
             totalCount: { type: 'number', example: 5 },
             page: { type: 'number', example: 1 },
             pageSize: { type: 'number', example: 10 },
-            properties: { type: 'array', items: { type: 'object' } },
+            properties: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  propertyId: { type: 'string', format: 'uuid' },
+                  propertyName: { type: 'string', example: 'Rancho Los Pinos' },
+                  description: { type: 'string', nullable: true },
+                  hasPool: { type: 'boolean' },
+                  hasCabin: { type: 'boolean' },
+                  hasCamping: { type: 'boolean' },
+                  currentStep: { type: 'number', example: 5 },
+                  status: {
+                    type: 'object',
+                    properties: {
+                      id: { type: 'number', example: 3 },
+                      name: { type: 'string', example: 'Publicado' },
+                      code: { type: 'string', example: 'published' },
+                    },
+                  },
+                  priceFrom: { type: 'number', example: 1500.0 },
+                  images: {
+                    type: 'array',
+                    items: {
+                      type: 'object',
+                      properties: {
+                        imageUrl: { type: 'string' },
+                        isPrimary: { type: 'boolean' },
+                        displayOrder: { type: 'number' },
+                      },
+                    },
+                  },
+                  location: {
+                    type: 'object',
+                    properties: {
+                      formattedAddress: { type: 'string', nullable: true },
+                      city: { type: 'string', example: 'Aguascalientes' },
+                      state: { type: 'string', example: 'Aguascalientes' },
+                    },
+                  },
+                  createdAt: { type: 'string', format: 'date-time' },
+                  updatedAt: { type: 'string', format: 'date-time', nullable: true },
+                  submittedAt: { type: 'string', format: 'date-time', nullable: true },
+                },
+              },
+            },
           },
         },
       },

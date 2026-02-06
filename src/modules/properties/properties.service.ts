@@ -353,12 +353,17 @@ export class PropertiesService {
    * Buscar propiedades con filtros (público)
    */
   async searchProperties(dto: SearchPropertiesDto) {
+    // Solo enviar true al SP, si es false o undefined enviar null (no filtrar)
+    const hasPoolValue = dto.hasPool === true ? true : null;
+    const hasCabinValue = dto.hasCabin === true ? true : null;
+    const hasCampingValue = dto.hasCamping === true ? true : null;
+
     const result = await this.databaseService.executeStoredProcedure(
       '[property].[xsp_SearchProperties]',
       [
-        { name: 'HasPool', type: sql.Bit, value: dto.hasPool ?? null },
-        { name: 'HasCabin', type: sql.Bit, value: dto.hasCabin ?? null },
-        { name: 'HasCamping', type: sql.Bit, value: dto.hasCamping ?? null },
+        { name: 'HasPool', type: sql.Bit, value: hasPoolValue },
+        { name: 'HasCabin', type: sql.Bit, value: hasCabinValue },
+        { name: 'HasCamping', type: sql.Bit, value: hasCampingValue },
         { name: 'ID_State', type: sql.TinyInt, value: dto.stateId ?? null },
         { name: 'ID_City', type: sql.Int, value: dto.cityId ?? null },
         { name: 'MinPrice', type: sql.Decimal(10, 2), value: dto.minPrice ?? null },
@@ -389,8 +394,8 @@ export class PropertiesService {
           location: p.Location,
           priceFrom: p.PriceFrom,
           images: p.Images ? JSON.parse(p.Images) : [],
-          rating: p.Rating,
-          reviewCount: p.ReviewCount,
+          rating: p.Rating === 0 || p.Rating === null ? 'Nuevo' : p.Rating,
+          reviewCount: p.ReviewCount ?? 0,
         })),
       },
     };
@@ -433,15 +438,32 @@ export class PropertiesService {
         properties: properties.map((p: any) => ({
           propertyId: p.ID_Property,
           propertyName: p.PropertyName,
-          status: p.ID_Status,
-          statusName: p.StatusName,
-          hasPool: p.HasPool,
-          hasCabin: p.HasCabin,
-          hasCamping: p.HasCamping,
-          primaryImageUrl: p.PrimaryImageUrl,
-          city: p.CityName,
-          state: p.StateName,
+          description: p.Description || null,
+          hasPool: Boolean(p.HasPool),
+          hasCabin: Boolean(p.HasCabin),
+          hasCamping: Boolean(p.HasCamping),
+          currentStep: p.CurrentStep ?? 0,
+          status: {
+            id: p.ID_Status,
+            name: p.StatusName,
+            code: p.StatusCode || null,
+          },
+          priceFrom: p.PriceFrom ?? 0,
+          images: p.Images
+            ? JSON.parse(p.Images).map((img: any) => ({
+                imageUrl: img.ImageURL,
+                isPrimary: Boolean(img.IsPrimary),
+                displayOrder: img.DisplayOrder ?? 0,
+              }))
+            : [],
+          location: {
+            formattedAddress: p.FormattedAddress || null,
+            city: p.CityName || null,
+            state: p.StateName || null,
+          },
           createdAt: p.CreatedAt,
+          updatedAt: p.UpdatedAt || null,
+          submittedAt: p.SubmittedAt || null,
         })),
       },
     };

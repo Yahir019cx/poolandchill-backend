@@ -15,6 +15,8 @@ export interface LoginUserData {
   isAgeVerified: boolean;
   isIdentityVerified: boolean;
   isHost: boolean;
+  /** 0=No es host, 1=Nuevo host (debe ver onboarding), 2=Onboarding completado */
+  isHostOnboarded: number;
   isStaff: boolean;
   accountStatus: number;
   createdAt: Date;
@@ -79,7 +81,8 @@ export interface LoginSpUserData {
   ProfileImageUrl: string | null;
   DateOfBirth: Date | null;
   Gender: number | null;
-  IsHostOnboarded: boolean;
+  /** 0=No es host, 1=Nuevo host (debe ver onboarding), 2=Onboarding completado */
+  IsHostOnboarded: number;
   Roles: string; // Comma-separated: "guest,host"
   HasPassword: boolean;
   LinkedProviders: string | null; // Comma-separated: "google,facebook"

@@ -286,6 +286,7 @@ export class LoginService {
       isAgeVerified: spData.IsAgeVerified,
       isIdentityVerified: spData.IsIdentityVerified,
       isHost: spData.IsHost,
+      isHostOnboarded: spData.IsHostOnboarded ?? 0,
       isStaff: spData.IsStaff,
       accountStatus: spData.AccountStatus,
       createdAt: spData.CreatedAt,

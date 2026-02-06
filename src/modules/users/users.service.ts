@@ -31,7 +31,8 @@ export interface UserProfile {
   profileImageUrl: string | null;
   dateOfBirth: string | null;
   gender: number | null;
-  isHostOnboarded: boolean;
+  /** 0=No es host, 1=Nuevo host (debe ver onboarding), 2=Onboarding completado */
+  isHostOnboarded: number;
   roles: string[];
   hasPassword: boolean;
   linkedProviders: string[];
@@ -59,7 +60,8 @@ export interface UpdatedProfile {
   profileImageUrl: string | null;
   dateOfBirth: string | null;
   gender: number | null;
-  isHostOnboarded: boolean;
+  /** 0=No es host, 1=Nuevo host (debe ver onboarding), 2=Onboarding completado */
+  isHostOnboarded: number;
   updatedAt: Date;
   message: string;
 }
@@ -73,6 +75,21 @@ export interface ImageUpdateResponse {
   lastName: string;
   profileImageUrl: string | null;
   message: string;
+}
+
+/**
+ * Interface para respuesta de completar onboarding de host
+ */
+export interface HostOnboardingResponse {
+  success: boolean;
+  message: string;
+  data: {
+    userId: string;
+    firstName: string;
+    lastName: string;
+    /** 0=No es host, 1=Nuevo host, 2=Onboarding completado */
+    isHostOnboarded: number;
+  };
 }
 
 /**
@@ -148,7 +165,7 @@ export class UsersService {
         profileImageUrl: userData.ProfileImageUrl || null,
         dateOfBirth: userData.DateOfBirth || null,
         gender: userData.Gender || null,
-        isHostOnboarded: Boolean(userData.IsHostOnboarded),
+        isHostOnboarded: userData.IsHostOnboarded ?? 0,
         roles: userData.Roles ? userData.Roles.split(',').filter(Boolean) : ['guest'],
         hasPassword: Boolean(userData.HasPassword),
         linkedProviders: userData.LinkedProviders
@@ -275,7 +292,7 @@ export class UsersService {
         profileImageUrl: updatedData.ProfileImageUrl || null,
         dateOfBirth: updatedData.DateOfBirth || null,
         gender: updatedData.Gender || null,
-        isHostOnboarded: Boolean(updatedData.IsHostOnboarded),
+        isHostOnboarded: updatedData.IsHostOnboarded ?? 0,
         updatedAt: updatedData.UpdatedAt || new Date(),
         message: updatedData.Message || 'Perfil actualizado exitosamente',
       };
@@ -402,6 +419,71 @@ export class UsersService {
       }
 
       throw new InternalServerErrorException('Error al eliminar imagen de perfil. Intenta nuevamente.');
+    }
+  }
+
+  /**
+   * Completa el onboarding de anfitrión
+   * Cambia IsHostOnboarded de 1 a 2
+   *
+   * @param userId - ID del usuario (extraído del JWT)
+   * @returns Datos actualizados del usuario
+   * @throws BadRequestException si hay error en el SP
+   */
+  async completeHostOnboarding(userId: string): Promise<HostOnboardingResponse> {
+    this.logger.log(`Completando onboarding de host para usuario: ${userId}`);
+
+    try {
+      const result = await this.databaseService.executeStoredProcedure(
+        '[security].[xsp_complete_host_onboarding]',
+        [{ name: 'UserId', type: sql.UniqueIdentifier, value: userId }],
+        [{ name: 'ErrorMessage', type: sql.NVarChar(500) }],
+      );
+
+      const { ErrorMessage: errorMessage } = result.output;
+
+      if (errorMessage) {
+        this.logger.warn(`Error al completar onboarding: ${errorMessage}`);
+
+        if (
+          errorMessage.toLowerCase().includes('no encontrado') ||
+          errorMessage.toLowerCase().includes('not found')
+        ) {
+          throw new NotFoundException('Usuario no encontrado');
+        }
+
+        throw new BadRequestException(errorMessage);
+      }
+
+      const userData = result.recordset?.[0];
+
+      if (!userData) {
+        throw new BadRequestException('No se pudo completar el onboarding');
+      }
+
+      this.logger.log(`Onboarding completado exitosamente para usuario: ${userId}`);
+
+      return {
+        success: true,
+        message: 'Introducción de anfitrión completada',
+        data: {
+          userId: userData.UserId,
+          firstName: userData.FirstName,
+          lastName: userData.LastName,
+          isHostOnboarded: userData.IsHostOnboarded ?? 2,
+        },
+      };
+    } catch (error) {
+      this.logger.error(`Error al completar onboarding: ${error.message}`);
+
+      if (
+        error instanceof NotFoundException ||
+        error instanceof BadRequestException
+      ) {
+        throw error;
+      }
+
+      throw new InternalServerErrorException('Error al completar el onboarding. Intenta nuevamente.');
     }
   }
 }
