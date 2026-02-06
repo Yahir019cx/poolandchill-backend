@@ -1,10 +1,20 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import * as sql from 'mssql';
 import { DatabaseService } from '../../config/database.config';
+import { ZohoMailService } from '../../web/email/zoho-mail.service';
+import {
+  propertyApprovedTemplate,
+  propertyRejectedTemplate,
+} from '../../web/email/templates';
 
 @Injectable()
 export class AdminService {
-  constructor(private readonly databaseService: DatabaseService) {}
+  private readonly logger = new Logger(AdminService.name);
+
+  constructor(
+    private readonly databaseService: DatabaseService,
+    private readonly zohoMailService: ZohoMailService,
+  ) {}
 
   /**
    * Obtener propiedades pendientes de revisión
@@ -72,9 +82,22 @@ export class AdminService {
       );
     }
 
+    // Enviar email al dueño (fire-and-forget)
+    const ownerData = result.recordset?.[0];
+    if (ownerData?.Email) {
+      const html = propertyApprovedTemplate(
+        ownerData.FirstName,
+        ownerData.PropertyName,
+      );
+      this.zohoMailService
+        .sendMail(ownerData.Email, 'Tu propiedad ha sido aprobada - Pool & Chill', html)
+        .then(() => this.logger.log(`Email de aprobación enviado a ${ownerData.Email}`))
+        .catch((err) => this.logger.error(`Error enviando email de aprobación: ${err.message}`));
+    }
+
     return {
       success: true,
-      message: 'Propiedad aprobada.',
+      message: ResultMessage || 'Propiedad aprobada.',
     };
   }
 
@@ -103,9 +126,23 @@ export class AdminService {
       );
     }
 
+    // Enviar email al dueño (fire-and-forget)
+    const ownerData = result.recordset?.[0];
+    if (ownerData?.Email) {
+      const html = propertyRejectedTemplate(
+        ownerData.FirstName,
+        ownerData.PropertyName,
+        reason,
+      );
+      this.zohoMailService
+        .sendMail(ownerData.Email, 'Actualización sobre tu propiedad - Pool & Chill', html)
+        .then(() => this.logger.log(`Email de rechazo enviado a ${ownerData.Email}`))
+        .catch((err) => this.logger.error(`Error enviando email de rechazo: ${err.message}`));
+    }
+
     return {
       success: true,
-      message: 'Propiedad rechazada.',
+      message: ResultMessage || 'Propiedad rechazada.',
     };
   }
 

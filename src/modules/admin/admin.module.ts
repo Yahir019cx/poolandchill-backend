@@ -3,6 +3,7 @@ import { AdminController } from './admin.controller';
 import { AdminService } from './admin.service';
 import { AdminRoleGuard } from './guards/admin-role.guard';
 import { AuthModule } from '../auth/auth.module';
+import { EmailModule } from '../../web/email/email.module';
 
 /**
  * Módulo de administración
@@ -16,7 +17,7 @@ import { AuthModule } from '../auth/auth.module';
  * Requiere rol: admin, superadmin, support o moderator
  */
 @Module({
-  imports: [AuthModule],
+  imports: [AuthModule, EmailModule],
   controllers: [AdminController],
   providers: [AdminService, AdminRoleGuard],
   exports: [AdminRoleGuard],
