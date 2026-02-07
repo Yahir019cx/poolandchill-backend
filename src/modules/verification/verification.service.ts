@@ -87,7 +87,7 @@ export class VerificationService {
       await this.saveVerificationSession(
         userId,
         diditResponse.session_id,
-        diditResponse.verification_url,
+        diditResponse.url,
       );
 
       this.logger.log(`Sesión de verificación creada: ${diditResponse.session_id}`);
@@ -97,7 +97,7 @@ export class VerificationService {
         message: 'Sesión de verificación creada',
         data: {
           sessionId: diditResponse.session_id,
-          verificationUrl: diditResponse.verification_url,
+          verificationUrl: diditResponse.url,
         },
       };
     } catch (error) {
