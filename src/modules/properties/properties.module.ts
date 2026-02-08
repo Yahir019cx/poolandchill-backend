@@ -3,6 +3,7 @@ import { PropertiesController } from './properties.controller';
 import { CatalogsController } from './catalogs.controller';
 import { PropertiesService } from './properties.service';
 import { AuthModule } from '../auth/auth.module';
+import { EmailModule } from '../../web/email/email.module';
 
 /**
  * Módulo de propiedades
@@ -20,7 +21,7 @@ import { AuthModule } from '../auth/auth.module';
  * - GET /catalogs/cities/:stateId - Catálogo ciudades
  */
 @Module({
-  imports: [AuthModule],
+  imports: [AuthModule, EmailModule],
   controllers: [PropertiesController, CatalogsController],
   providers: [PropertiesService],
   exports: [PropertiesService],

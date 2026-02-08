@@ -64,7 +64,8 @@ export class PropertiesController {
   @ApiResponse({ status: 401, description: 'No autenticado' })
   async create(@Request() req: any, @Body() dto: CreatePropertyDto) {
     const userId = req.user.userId;
-    return this.propertiesService.createProperty(userId, dto);
+    const userEmail = req.user.email;
+    return this.propertiesService.createProperty(userId, userEmail, dto);
   }
 
   // ══════════════════════════════════════════════════

@@ -6,6 +6,8 @@ import {
 } from '@nestjs/common';
 import * as sql from 'mssql';
 import { DatabaseService } from '../../config/database.config';
+import { ZohoMailService } from '../../web/email/zoho-mail.service';
+import { propertyInReviewTemplate } from '../../web/email/templates';
 import {
   CreatePropertyDto,
   PoolAmenitiesDto,
@@ -18,7 +20,10 @@ import {
 export class PropertiesService {
   private readonly logger = new Logger(PropertiesService.name);
 
-  constructor(private readonly databaseService: DatabaseService) {}
+  constructor(
+    private readonly databaseService: DatabaseService,
+    private readonly zohoMailService: ZohoMailService,
+  ) {}
 
   /**
    * Convierte string "HH:mm" a Date para sql.Time
@@ -33,7 +38,7 @@ export class PropertiesService {
   /**
    * Crea una propiedad completa ejecutando todos los SPs en secuencia
    */
-  async createProperty(userId: string, dto: CreatePropertyDto) {
+  async createProperty(userId: string, userEmail: string, dto: CreatePropertyDto) {
     this.logger.log(`Creando propiedad para usuario: ${userId}`);
 
     // Validar que al menos un servicio esté seleccionado
@@ -72,6 +77,15 @@ export class PropertiesService {
       await this.executeSubmitForReview(propertyId, userId);
 
       this.logger.log(`Propiedad ${propertyId} creada y enviada a revisión`);
+
+      // Enviar email de confirmación (fire-and-forget)
+      if (userEmail) {
+        const html = propertyInReviewTemplate(dto.basicInfo.propertyName);
+        this.zohoMailService
+          .sendMail(userEmail, 'Tu propiedad está en revisión - Pool & Chill', html)
+          .then(() => this.logger.log(`Email de revisión enviado a ${userEmail}`))
+          .catch((err) => this.logger.error(`Error enviando email de revisión: ${err.message}`));
+      }
 
       return {
         success: true,
