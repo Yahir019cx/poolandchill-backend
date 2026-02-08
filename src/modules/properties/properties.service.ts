@@ -38,7 +38,7 @@ export class PropertiesService {
   /**
    * Crea una propiedad completa ejecutando todos los SPs en secuencia
    */
-  async createProperty(userId: string, userEmail: string, dto: CreatePropertyDto) {
+  async createProperty(userId: string, dto: CreatePropertyDto) {
     this.logger.log(`Creando propiedad para usuario: ${userId}`);
 
     // Validar que al menos un servicio esté seleccionado
@@ -79,13 +79,18 @@ export class PropertiesService {
       this.logger.log(`Propiedad ${propertyId} creada y enviada a revisión`);
 
       // Enviar email de confirmación (fire-and-forget)
-      if (userEmail) {
+      this.getUserEmail(userId).then((email) => {
+        if (!email) {
+          this.logger.warn(`No se envió email de revisión: no se encontró email para usuario ${userId}`);
+          return;
+        }
+        this.logger.log(`Enviando email de revisión a: ${email}`);
         const html = propertyInReviewTemplate(dto.basicInfo.propertyName);
         this.zohoMailService
-          .sendMail(userEmail, 'Tu propiedad está en revisión - Pool & Chill', html)
-          .then(() => this.logger.log(`Email de revisión enviado a ${userEmail}`))
+          .sendMail(email, 'Tu propiedad está en revisión - Pool & Chill', html)
+          .then(() => this.logger.log(`Email de revisión enviado a ${email}`))
           .catch((err) => this.logger.error(`Error enviando email de revisión: ${err.message}`));
-      }
+      }).catch((err) => this.logger.error(`Error obteniendo email del usuario: ${err.message}`));
 
       return {
         success: true,
@@ -99,6 +104,23 @@ export class PropertiesService {
       this.logger.error(`Error creando propiedad: ${error.message}`);
       throw new InternalServerErrorException('Error al crear la propiedad');
     }
+  }
+
+  /**
+   * Obtiene el email del usuario desde la BD
+   */
+  private async getUserEmail(userId: string): Promise<string | null> {
+    const result = await this.databaseService.executeStoredProcedure(
+      '[security].[xsp_GetUserEmail]',
+      [
+        { name: 'UserId', type: sql.UniqueIdentifier, value: userId },
+      ],
+      [
+        { name: 'Email', type: sql.NVarChar(256) },
+      ],
+    );
+
+    return result.output?.Email || null;
   }
 
   /**
