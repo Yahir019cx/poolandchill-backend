@@ -2,58 +2,48 @@ import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as sql from 'mssql';
 
-/**
- * Servicio centralizado para conexiones a SQL Server
- * Implementa connection pooling para mejor rendimiento
- */
+const MAX_RETRIES = 5;
+const BASE_DELAY_MS = 1000;
+
 @Injectable()
 export class DatabaseService implements OnModuleDestroy {
   private readonly logger = new Logger(DatabaseService.name);
   private pool: sql.ConnectionPool | null = null;
   private connecting: Promise<sql.ConnectionPool> | null = null;
+  private isReconnecting = false;
 
-  constructor(private readonly configService: ConfigService) {}
+  constructor(private readonly configService: ConfigService) { }
 
-  /**
-   * Obtiene la configuración de conexión a SQL Server
-   */
   private getConfig(): sql.config {
-  return {
-    server: this.configService.get<string>('DB_HOST', ''),
-    port: 1433,
-    database: this.configService.get<string>('DB_NAME', ''),
-    user: this.configService.get<string>('DB_USER', ''),
-    password: this.configService.get<string>('DB_PASS', ''),
-    options: {
-      encrypt: true,
-      trustServerCertificate: false,
-    },
-    pool: {
-      max: 10,
-      min: 0,
-      idleTimeoutMillis: 30000,
-    },
-  };
-}
+    return {
+      server: this.configService.get<string>('DB_HOST', ''),
+      database: this.configService.get<string>('DB_NAME', ''),
+      user: this.configService.get<string>('DB_USER', ''),
+      password: this.configService.get<string>('DB_PASS', ''),
+      options: {
+        port: Number(this.configService.get<string>('DB_PORT', '1433')),
+        encrypt: false,               
+        trustServerCertificate: true, 
+      },
+      pool: {
+        max: 10,
+        min: 1,
+        idleTimeoutMillis: 30000,
+      },
+    };
+  }
 
 
-  /**
-   * Obtiene una conexión del pool
-   * Reutiliza la conexión existente o crea una nueva si no existe
-   */
   async getConnection(): Promise<sql.ConnectionPool> {
-    // Si ya hay un pool conectado, reutilizarlo
     if (this.pool?.connected) {
       return this.pool;
     }
 
-    // Si hay una conexión en progreso, esperar a que termine
     if (this.connecting) {
       return this.connecting;
     }
 
-    // Crear nueva conexión
-    this.connecting = this.createConnection();
+    this.connecting = this.connectWithRetry();
 
     try {
       this.pool = await this.connecting;
@@ -63,35 +53,68 @@ export class DatabaseService implements OnModuleDestroy {
     }
   }
 
-  /**
-   * Crea una nueva conexión al pool
-   */
-  private async createConnection(): Promise<sql.ConnectionPool> {
-    try {
-      const config = this.getConfig();
-      const pool = new sql.ConnectionPool(config);
+  private async connectWithRetry(): Promise<sql.ConnectionPool> {
+    const label = this.isReconnecting ? 'Reconexión' : 'Conexión';
 
-      pool.on('error', (err) => {
-        this.logger.error(`Database pool error: ${err.message}`);
-        this.pool = null;
-      });
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        const config = this.getConfig();
+        const pool = new sql.ConnectionPool(config);
 
-      await pool.connect();
-      this.logger.log('Conexión a SQL Server establecida');
+        pool.on('error', (err) => {
+          this.logger.error(`Pool error: ${err.message}`);
+          this.pool = null;
+          this.handleDisconnect();
+        });
 
-      return pool;
-    } catch (error) {
-      this.logger.error(`Error al conectar a SQL Server: ${error.message}`);
-      throw error;
+        await pool.connect();
+
+        return pool;
+      } catch (error) {
+        const delay = BASE_DELAY_MS * Math.pow(2, attempt - 1);
+        this.logger.error(
+          `${label} fallida (intento ${attempt}/${MAX_RETRIES}): ${error.message}`,
+        );
+
+        if (attempt === MAX_RETRIES) {
+          this.logger.error(
+            `Fallo definitivo: no se pudo conectar a SQL Server después de ${MAX_RETRIES} intentos`,
+          );
+          this.isReconnecting = false;
+          throw error;
+        }
+
+        this.logger.warn(`Reintentando en ${delay}ms...`);
+        await this.sleep(delay);
+      }
     }
+
+    throw new Error('No se pudo conectar a SQL Server');
   }
 
-  /**
-   * Ejecuta un stored procedure
-   * @param spName - Nombre del SP (ej: '[security].[xsp_CreatePendingRegistration]')
-   * @param inputs - Parámetros de entrada
-   * @param outputs - Parámetros de salida
-   */
+  private handleDisconnect(): void {
+    if (this.connecting) return;
+
+    this.isReconnecting = true;
+    this.logger.warn('Desconexión detectada. Iniciando reconexión automática...');
+
+    this.connecting = this.connectWithRetry();
+    this.connecting
+      .then((pool) => {
+        this.pool = pool;
+      })
+      .catch((err) => {
+        this.logger.error(`Reconexión automática fallida: ${err.message}`);
+      })
+      .finally(() => {
+        this.connecting = null;
+      });
+  }
+
+  private sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
   async executeStoredProcedure<T = any>(
     spName: string,
     inputs: { name: string; type: sql.ISqlType | sql.ISqlTypeFactoryWithNoParams; value: any }[],
@@ -100,12 +123,10 @@ export class DatabaseService implements OnModuleDestroy {
     const pool = await this.getConnection();
     const request = pool.request();
 
-    // Agregar inputs
     for (const input of inputs) {
       request.input(input.name, input.type, input.value);
     }
 
-    // Agregar outputs
     for (const output of outputs) {
       request.output(output.name, output.type);
     }
@@ -118,9 +139,6 @@ export class DatabaseService implements OnModuleDestroy {
     };
   }
 
-  /**
-   * Cierra la conexión al destruir el módulo
-   */
   async onModuleDestroy() {
     if (this.pool) {
       await this.pool.close();

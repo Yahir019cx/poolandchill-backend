@@ -2,7 +2,8 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
-import { ValidationPipe } from '@nestjs/common'; 
+import { Logger, ValidationPipe } from '@nestjs/common';
+import { DatabaseService } from './config/database.config';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -54,10 +55,21 @@ async function bootstrap() {
 
   const port = configService.get<number>('PORT') || 3000;
 
+  const logger = new Logger('Bootstrap');
+
   await app.listen(port);
-  console.log(`Servidor corriendo en http://localhost:${port}`);
+  logger.log(`Servidor corriendo en http://localhost:${port}`);
   if (nodeEnv !== 'production') {
-    console.log(`Swagger disponible en http://localhost:${port}/api/docs`);
+    logger.log(`Swagger disponible en http://localhost:${port}/api/docs`);
+  }
+
+  // Conexión inicial a SQL Server
+  const databaseService = app.get(DatabaseService);
+  try {
+    await databaseService.getConnection();
+    logger.log('Conexion Successful');
+  } catch (error) {
+    logger.error(`No se pudo conectar a SQL Server: ${error.message}`);
   }
 }
 bootstrap();
