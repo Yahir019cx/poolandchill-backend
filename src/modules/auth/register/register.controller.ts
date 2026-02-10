@@ -49,24 +49,28 @@ export class RegisterController {
     type: RegisterDto,
     description: 'Datos del usuario a registrar',
     examples: {
-      usuario_completo: {
-        summary: 'Usuario con todos los datos',
+      usuario_web: {
+        summary: 'Usuario desde Web (type=1)',
         value: {
           email: 'pyahirsvds@gmail.com',
           firstName: 'Yahir',
           lastName: 'Sanchez',
+          phoneNumber: '+5215512345678',
           password: 'Py00448829#',
+          type: 1,
           dateOfBirth: '2002-10-19',
           gender: 1,
         },
       },
-      usuario_minimo: {
-        summary: 'Usuario con datos mínimos',
+      usuario_app: {
+        summary: 'Usuario desde App (type=2)',
         value: {
           email: 'pyahirsvds@gmail.com',
           firstName: 'Yahir',
           lastName: 'Sanchez',
+          phoneNumber: '+5215512345678',
           password: 'Py00448829#',
+          type: 2,
         },
       },
     },

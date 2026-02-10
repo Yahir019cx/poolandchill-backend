@@ -82,28 +82,19 @@ export class EmailVerificationService {
       if (!userData) {
         this.logger.log(`Usuario creado exitosamente, ID: ${userId}`);
 
-        // Crear sesión temporal para auto-login
-        const sessionToken = await this.createVerificationSession(userId, '', ['guest']);
-
         return {
           success: true,
           userId: userId,
           email: '',
           firstName: '',
           lastName: '',
-          sessionToken,
+          roles: ['guest'],
         };
       }
 
       this.logger.log(`Usuario verificado exitosamente: ${userData.email}, ID: ${userId}`);
 
-      // Crear sesión temporal para auto-login
       const roles = this.parseRoles(userData.roles);
-      const sessionToken = await this.createVerificationSession(
-        userData.userId || userId,
-        userData.email || '',
-        roles,
-      );
 
       return {
         success: true,
@@ -111,7 +102,7 @@ export class EmailVerificationService {
         email: userData.email || '',
         firstName: userData.firstName || '',
         lastName: userData.lastName || '',
-        sessionToken,
+        roles,
       };
     } catch (error) {
       this.logger.error(`Error al verificar token: ${error.message}`);
@@ -159,6 +150,33 @@ export class EmailVerificationService {
     );
 
     return sessionToken;
+  }
+
+  /**
+   * Genera tokens directamente para un usuario verificado (tipo web)
+   * Sin pasar por el flujo de session token
+   */
+  async generateTokensForUser(
+    userId: string,
+    email: string,
+    roles: string[],
+  ): Promise<{
+    accessToken: string;
+    refreshToken: string;
+    expiresIn: number;
+    user: { userId: string; email: string; roles: string[] };
+  }> {
+    const accessToken = this.generateAccessToken(userId, email, roles);
+    const refreshToken = await this.createRefreshToken(userId);
+
+    this.logger.log(`Tokens generados directamente para usuario: ${userId}`);
+
+    return {
+      accessToken,
+      refreshToken,
+      expiresIn: 900,
+      user: { userId, email, roles },
+    };
   }
 
   /**

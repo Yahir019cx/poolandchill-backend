@@ -55,7 +55,7 @@ export class RegisterService {
    * 4. Envía email de verificación
    */
   async register(registerDto: RegisterDto): Promise<RegisterResponse> {
-    const { email, firstName, lastName, phoneNumber, password, dateOfBirth, gender } = registerDto;
+    const { email, firstName, lastName, phoneNumber, password, dateOfBirth, gender, type } = registerDto;
 
     this.logger.log(`Iniciando registro para: ${email}`);
 
@@ -85,8 +85,8 @@ export class RegisterService {
       tokenExpiresAt,
     });
 
-    // 5. Enviar email de verificación
-    await this.sendVerificationEmail(email, firstName, verificationToken);
+    // 5. Enviar email de verificación (type viaja en la URL del email)
+    await this.sendVerificationEmail(email, firstName, verificationToken, type);
 
     this.logger.log(`Registro pendiente creado para: ${email}, ID: ${pendingRegistration.registrationId}`);
 
@@ -176,9 +176,9 @@ export class RegisterService {
   /**
    * Envía el email de verificación al usuario
    */
-  private async sendVerificationEmail(email: string, firstName: string, token: string): Promise<void> {
+  private async sendVerificationEmail(email: string, firstName: string, token: string, type: number): Promise<void> {
     const backendUrl = this.configService.get<string>('BACKEND_URL', 'http://localhost:3000');
-    const verificationUrl = `${backendUrl}/auth/verify-email?token=${token}`;
+    const verificationUrl = `${backendUrl}/auth/verify-email?token=${token}&type=${type}`;
 
     const htmlContent = this.getVerificationEmailTemplate(firstName, verificationUrl);
 

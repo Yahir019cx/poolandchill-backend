@@ -63,6 +63,16 @@ export class RegisterDto {
   password: string;
 
   @ApiProperty({
+    example: 1,
+    description: 'Tipo de registro: 1=Web (redirige a crear propiedad con tokens), 2=App (solo verifica usuario)',
+    enum: [1, 2],
+  })
+  @IsInt({ message: 'El tipo de registro debe ser un número entero' })
+  @Min(1, { message: 'El tipo de registro debe ser 1 o 2' })
+  @Max(2, { message: 'El tipo de registro debe ser 1 o 2' })
+  type: number;
+
+  @ApiProperty({
     example: '1990-03-15',
     description: 'Fecha de nacimiento en formato YYYY-MM-DD (opcional)',
     required: false,

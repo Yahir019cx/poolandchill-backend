@@ -49,5 +49,6 @@ export interface VerificationResponse {
   email: string;
   firstName: string;
   lastName: string;
-  sessionToken: string; // Token temporal de un solo uso
+  roles: string[];
+  sessionToken?: string; // Token temporal de un solo uso (solo para flujo legacy)
 }

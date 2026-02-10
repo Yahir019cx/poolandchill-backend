@@ -9,6 +9,7 @@ import {
 } from '@nestjs/swagger';
 import { EmailVerificationService } from './email-verification.service';
 import { ExchangeSessionDto } from './dto/exchange-session.dto';
+import { encryptPayload } from '../../../common/utils/encryption.util';
 
 /**
  * Controller para la verificación de email
@@ -47,32 +48,22 @@ export class EmailVerificationController {
    */
   @Get('verify-email')
   @ApiOperation({
-    summary: 'Verificar email y completar registro (redirige con session token)',
+    summary: 'Verificar email y completar registro (redirige con tokens encriptados o vista simple)',
     description: `
       Verifica el token de email enviado al usuario y completa el proceso de registro.
 
-      **IMPORTANTE:** Este endpoint NO retorna JSON. En su lugar, redirige al frontend
-      con un session token temporal que debe ser intercambiado por tokens reales.
+      **IMPORTANTE:** Este endpoint NO retorna JSON. Redirige al frontend según el tipo de registro.
 
-      **Flujo completo:**
-      1. El usuario hace clic en el botón del email
-      2. El navegador abre esta URL con el token de verificación
-      3. El backend verifica el token y crea el usuario
-      4. El backend genera un session token temporal (válido 2 minutos, un solo uso)
-      5. Redirige al frontend al paso 3 con el session token en la URL
-      6. El frontend llama a POST /auth/exchange-session con el session token
-      7. Recibe el accessToken y refreshToken reales de forma segura
-      8. El usuario completa los pasos 3-10 del registro
+      **Tipo 1 (Web):**
+      1. Verifica el token y crea el usuario
+      2. Genera accessToken y refreshToken directamente
+      3. Encripta los tokens con AES-256-GCM
+      4. Redirige a: \`/registro?step=3&data={tokensEncriptados}\`
+      5. El frontend desencripta con la misma ENCRYPTION_KEY y guarda en localStorage
 
-      **Ventajas de seguridad:**
-      - El JWT real nunca viaja en la URL
-      - El session token solo se puede usar una vez
-      - Expira en 2 minutos
-      - Es como un "auto-login" seguro
-
-      **Redirecciones:**
-      - Éxito: \`${'{FRONTEND_URL}'}/registro?step=3&session={sessionToken}\`
-      - Error: \`${'{FRONTEND_URL}'}/registro?status=error&message={mensaje}\`
+      **Tipo 2 (App):**
+      1. Verifica el token y crea el usuario
+      2. Redirige a: \`/verificacion-exitosa\` (vista simple de confirmación)
     `,
   })
   @ApiQuery({
@@ -81,6 +72,13 @@ export class EmailVerificationController {
     type: String,
     description: 'Token UUID de verificación enviado por email',
     example: '550e8400-e29b-41d4-a716-446655440000',
+  })
+  @ApiQuery({
+    name: 'type',
+    required: false,
+    type: String,
+    description: 'Tipo de registro: 1=Web (redirige con tokens encriptados), 2=App (vista simple de verificación)',
+    example: '1',
   })
   @ApiResponse({
     status: 302,
@@ -97,36 +95,58 @@ export class EmailVerificationController {
   })
   async verifyEmail(
     @Query('token') token: string,
+    @Query('type') type: string,
     @Res() res: Response,
   ): Promise<void> {
     const frontendUrl = this.configService.get<string>(
       'FRONTEND_URL',
       'http://localhost:5173',
     );
-    const registrationPage = `${frontendUrl}/registro`;
+    const registrationType = parseInt(type, 10) || 1;
 
     try {
-      // Intentar verificar el token
+      // Verificar el token y crear el usuario
       const result = await this.emailVerificationService.verifyToken(token);
 
       this.logger.log(
-        `Verificación exitosa para usuario ${result.userId}. Redirigiendo a frontend.`,
+        `Verificación exitosa para usuario ${result.userId}. Tipo: ${registrationType}`,
       );
 
-      // Redirigir al frontend al paso 3 con el session token temporal
-      const redirectUrl = `${registrationPage}?step=3&session=${encodeURIComponent(result.sessionToken)}`;
-      res.redirect(redirectUrl);
+      if (registrationType === 1) {
+        // TIPO WEB: Generar tokens, encriptarlos y redirigir con ellos
+        const tokens = await this.emailVerificationService.generateTokensForUser(
+          result.userId,
+          result.email,
+          result.roles || ['guest'],
+        );
+
+        const encryptionKey = this.configService.get<string>('ENCRYPTION_KEY', '');
+        const payload = {
+          accessToken: tokens.accessToken,
+          refreshToken: tokens.refreshToken,
+          expiresIn: tokens.expiresIn,
+          user: tokens.user,
+        };
+
+        const encryptedData = encryptPayload(payload, encryptionKey);
+        const redirectUrl = `${frontendUrl}/registro?step=3&data=${encryptedData}`;
+        res.redirect(redirectUrl);
+      } else {
+        // TIPO APP: Redirigir a vista sencilla de verificación exitosa
+        const redirectUrl = `${frontendUrl}/verificacion-exitosa`;
+        res.redirect(redirectUrl);
+      }
     } catch (error) {
       this.logger.warn(`Error en verificación: ${error.message}`);
 
-      // Obtener mensaje de error amigable
       const errorMessage = this.getErrorMessage(error);
-
-      // Codificar el mensaje para URL
       const encodedMessage = encodeURIComponent(errorMessage);
 
-      // Redirigir al frontend con error (al paso 1 para que intenten de nuevo)
-      res.redirect(`${registrationPage}?status=error&message=${encodedMessage}`);
+      if (registrationType === 1) {
+        res.redirect(`${frontendUrl}/registro?status=error&message=${encodedMessage}`);
+      } else {
+        res.redirect(`${frontendUrl}/verificacion-exitosa?status=error&message=${encodedMessage}`);
+      }
     }
   }
 
