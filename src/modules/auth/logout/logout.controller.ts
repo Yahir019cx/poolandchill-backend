@@ -1,4 +1,4 @@
-import { Controller, Post, HttpCode, HttpStatus, UseGuards, Request } from '@nestjs/common';
+import { Controller, Post, HttpCode, HttpStatus, UseGuards, Request, Logger } from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
@@ -15,6 +15,8 @@ import { LogoutResponse } from '../interfaces/login-response.interface';
 @ApiTags('Authentication - Login')
 @Controller('auth')
 export class LogoutController {
+  private readonly logger = new Logger(LogoutController.name);
+
   constructor(private readonly logoutService: LogoutService) {}
 
   /**
@@ -82,6 +84,9 @@ Cierra la sesión del usuario revocando todos sus Refresh Tokens.
   })
   async logout(@Request() req: any): Promise<LogoutResponse> {
     const userId = req.user.userId;
-    return this.logoutService.logout(userId);
+    this.logger.log(`Solicitud de logout para usuario: ${userId}`);
+    const result = await this.logoutService.logout(userId);
+    this.logger.log(`Logout completado exitosamente para usuario: ${userId}`);
+    return result;
   }
 }

@@ -59,6 +59,9 @@ export class RegisterService {
 
     this.logger.log(`Iniciando registro para: ${email}`);
 
+    // Normalizar teléfono: agregar +52 si no tiene código de país
+    const normalizedPhone = phoneNumber.startsWith('+') ? phoneNumber : `+52${phoneNumber}`;
+
     // 1. Hashear la contraseña con bcrypt
     const bcryptRounds = parseInt(this.configService.get<string>('BCRYPT_ROUNDS', '12'), 10);
     const salt = await bcrypt.genSalt(bcryptRounds);
@@ -76,7 +79,7 @@ export class RegisterService {
       email,
       firstName,
       lastName,
-      phoneNumber,
+      phoneNumber: normalizedPhone,
       passwordHash,
       passwordSalt: salt,
       dateOfBirth: dateOfBirth || null,
