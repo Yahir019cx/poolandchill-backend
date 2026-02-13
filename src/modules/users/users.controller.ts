@@ -9,6 +9,7 @@ import {
   Request,
   HttpCode,
   HttpStatus,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -18,7 +19,13 @@ import {
   ApiBody,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { UsersService, UserProfile, UpdatedProfile, ImageUpdateResponse, HostOnboardingResponse } from './users.service';
+import {
+  UsersService,
+  UserProfile,
+  UpdatedProfile,
+  ImageUpdateResponse,
+  HostOnboardingResponse,
+} from './users.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { UpdateImageDto } from './dto/update-image.dto';
 
@@ -64,7 +71,10 @@ export class UsersController {
     schema: {
       type: 'object',
       properties: {
-        userId: { type: 'string', example: '3DDA3AA3-F90F-4B2B-AC23-346C8B9E537D' },
+        userId: {
+          type: 'string',
+          example: '3DDA3AA3-F90F-4B2B-AC23-346C8B9E537D',
+        },
         email: { type: 'string', example: 'juan@example.com' },
         phoneNumber: { type: 'string', nullable: true, example: null },
         isEmailVerified: { type: 'boolean', example: true },
@@ -78,14 +88,32 @@ export class UsersController {
         firstName: { type: 'string', example: 'Juan Alberto' },
         lastName: { type: 'string', example: 'Pérez Rosales' },
         displayName: { type: 'string', nullable: true, example: 'Juan Pérez' },
-        bio: { type: 'string', nullable: true, example: 'Amante de las albercas y el relax' },
+        bio: {
+          type: 'string',
+          nullable: true,
+          example: 'Amante de las albercas y el relax',
+        },
         profileImageUrl: { type: 'string', nullable: true },
-        dateOfBirth: { type: 'string', format: 'date', nullable: true, example: '1995-03-15' },
+        dateOfBirth: {
+          type: 'string',
+          format: 'date',
+          nullable: true,
+          example: '1995-03-15',
+        },
         gender: { type: 'number', nullable: true, example: 1 },
-        isHostOnboarded: { type: 'number', example: 0, description: '0=No es host, 1=Nuevo host, 2=Onboarding completado', enum: [0, 1, 2] },
+        isHostOnboarded: {
+          type: 'number',
+          example: 0,
+          description: '0=No es host, 1=Nuevo host, 2=Onboarding completado',
+          enum: [0, 1, 2],
+        },
         roles: { type: 'array', items: { type: 'string' }, example: ['guest'] },
         hasPassword: { type: 'boolean', example: true },
-        linkedProviders: { type: 'array', items: { type: 'string' }, example: [] },
+        linkedProviders: {
+          type: 'array',
+          items: { type: 'string' },
+          example: [],
+        },
         isHost: { type: 'boolean', example: false },
         isStaff: { type: 'boolean', example: false },
       },
@@ -205,7 +233,8 @@ export class UsersController {
         statusCode: { type: 'number', example: 400 },
         message: {
           type: 'string',
-          example: 'El nombre a mostrar debe contener partes de tu nombre real (Juan Alberto Pérez Rosales)',
+          example:
+            'El nombre a mostrar debe contener partes de tu nombre real (Juan Alberto Pérez Rosales)',
         },
       },
     },
@@ -256,7 +285,8 @@ export class UsersController {
       imagen_firebase: {
         summary: 'URL de Firebase Storage',
         value: {
-          profileImageUrl: 'https://firebasestorage.googleapis.com/v0/b/poolandchillapp.firebasestorage.app/o/profiles%2Fuser123%2Fphoto.jpg?alt=media',
+          profileImageUrl:
+            'https://firebasestorage.googleapis.com/v0/b/poolandchillapp.firebasestorage.app/o/profiles%2Fuser123%2Fphoto.jpg?alt=media',
         },
       },
     },
@@ -267,14 +297,21 @@ export class UsersController {
     schema: {
       type: 'object',
       properties: {
-        userId: { type: 'string', example: '3DDA3AA3-F90F-4B2B-AC23-346C8B9E537D' },
+        userId: {
+          type: 'string',
+          example: '3DDA3AA3-F90F-4B2B-AC23-346C8B9E537D',
+        },
         firstName: { type: 'string', example: 'Juan Alberto' },
         lastName: { type: 'string', example: 'Pérez Rosales' },
         profileImageUrl: {
           type: 'string',
-          example: 'https://firebasestorage.googleapis.com/v0/b/poolandchillapp.firebasestorage.app/o/profiles%2Fuser123%2Fphoto.jpg?alt=media',
+          example:
+            'https://firebasestorage.googleapis.com/v0/b/poolandchillapp.firebasestorage.app/o/profiles%2Fuser123%2Fphoto.jpg?alt=media',
         },
-        message: { type: 'string', example: 'Imagen de perfil actualizada exitosamente' },
+        message: {
+          type: 'string',
+          example: 'Imagen de perfil actualizada exitosamente',
+        },
       },
     },
   })
@@ -285,7 +322,10 @@ export class UsersController {
       type: 'object',
       properties: {
         statusCode: { type: 'number', example: 400 },
-        message: { type: 'string', example: 'Solo se permiten imágenes de Firebase Storage' },
+        message: {
+          type: 'string',
+          example: 'Solo se permiten imágenes de Firebase Storage',
+        },
       },
     },
   })
@@ -326,11 +366,17 @@ export class UsersController {
     schema: {
       type: 'object',
       properties: {
-        userId: { type: 'string', example: '3DDA3AA3-F90F-4B2B-AC23-346C8B9E537D' },
+        userId: {
+          type: 'string',
+          example: '3DDA3AA3-F90F-4B2B-AC23-346C8B9E537D',
+        },
         firstName: { type: 'string', example: 'Juan Alberto' },
         lastName: { type: 'string', example: 'Pérez Rosales' },
         profileImageUrl: { type: 'null', example: null },
-        message: { type: 'string', example: 'Imagen de perfil eliminada exitosamente' },
+        message: {
+          type: 'string',
+          example: 'Imagen de perfil eliminada exitosamente',
+        },
       },
     },
   })
@@ -374,14 +420,26 @@ export class UsersController {
       type: 'object',
       properties: {
         success: { type: 'boolean', example: true },
-        message: { type: 'string', example: 'Introducción de anfitrión completada' },
+        message: {
+          type: 'string',
+          example: 'Introducción de anfitrión completada',
+        },
         data: {
           type: 'object',
           properties: {
-            userId: { type: 'string', example: '123e4567-e89b-12d3-a456-426614174000' },
+            userId: {
+              type: 'string',
+              example: '123e4567-e89b-12d3-a456-426614174000',
+            },
             firstName: { type: 'string', example: 'Juan' },
             lastName: { type: 'string', example: 'Pérez' },
-            isHostOnboarded: { type: 'number', example: 2, description: '0=No es host, 1=Nuevo host, 2=Onboarding completado', enum: [0, 1, 2] },
+            isHostOnboarded: {
+              type: 'number',
+              example: 2,
+              description:
+                '0=No es host, 1=Nuevo host, 2=Onboarding completado',
+              enum: [0, 1, 2],
+            },
           },
         },
       },
@@ -394,7 +452,10 @@ export class UsersController {
       type: 'object',
       properties: {
         statusCode: { type: 'number', example: 400 },
-        message: { type: 'string', example: 'Usuario no es host o ya completó el onboarding' },
+        message: {
+          type: 'string',
+          example: 'Usuario no es host o ya completó el onboarding',
+        },
         error: { type: 'string', example: 'Bad Request' },
       },
     },
@@ -421,8 +482,27 @@ export class UsersController {
       },
     },
   })
-  async completeHostOnboarding(@Request() req: any): Promise<HostOnboardingResponse> {
+  async completeHostOnboarding(
+    @Request() req: any,
+  ): Promise<HostOnboardingResponse> {
     const userId = req.user.userId;
     return this.usersService.completeHostOnboarding(userId);
+  }
+
+  @Get('host')
+  async getAllUsersHost() {
+    try {
+      const users = await this.usersService.getUserDataHost();
+      return users.map((user) => ({
+        userId: user.UserId,
+        displayName: user.DisplayName,
+        profileImageUrl: user.ProfileImageUrl,
+        email: user.Email,
+        isIdentityVerified: user.IsIdentityVerified,
+      }));
+    } catch (error) {
+      //console.error('Error al obtener users host:', error);
+      throw new InternalServerErrorException('Error al obtener los usuarios');
+    }
   }
 }
