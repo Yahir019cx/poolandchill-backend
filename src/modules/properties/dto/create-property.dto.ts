@@ -156,6 +156,12 @@ export class CabinPricingDto {
   @Min(1)
   minNights?: number;
 
+  @ApiPropertyOptional({ example: 7 })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  maxNights?: number;
+
   @ApiProperty({ example: 2500.0 })
   @IsNumber()
   @Min(0)
@@ -181,6 +187,12 @@ export class CampingPricingDto {
   @IsInt()
   @Min(1)
   minNights?: number;
+
+  @ApiPropertyOptional({ example: 7 })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  maxNights?: number;
 
   @ApiProperty({ example: 500.0 })
   @IsNumber()
