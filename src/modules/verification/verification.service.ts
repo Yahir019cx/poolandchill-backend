@@ -46,14 +46,18 @@ export class VerificationService {
         };
       }
 
-      // Si tiene una sesión pendiente, retornar esa URL
+      // Si tiene una sesión pendiente, retornar esa URL y token (para SDK móvil)
       if (userStatus.pendingSessionId && userStatus.verificationUrl) {
+        const sessionToken =
+          this.extractTokenFromVerificationUrl(userStatus.verificationUrl) ||
+          userStatus.pendingSessionId;
         return {
           success: true,
           message: 'Ya existe una sesión de verificación pendiente',
           data: {
             sessionId: userStatus.pendingSessionId,
             verificationUrl: userStatus.verificationUrl,
+            sessionToken,
           },
         };
       }
@@ -83,6 +87,13 @@ export class VerificationService {
 
       const diditResponse = await response.json();
 
+      // session_token es lo que el SDK Android necesita; la API puede devolverlo o viene en la URL
+      const sessionToken =
+        diditResponse.session_token ||
+        diditResponse.token ||
+        this.extractTokenFromVerificationUrl(diditResponse.url) ||
+        diditResponse.session_id;
+
       // Guardar session_id en la BD
       await this.saveVerificationSession(
         userId,
@@ -98,6 +109,7 @@ export class VerificationService {
         data: {
           sessionId: diditResponse.session_id,
           verificationUrl: diditResponse.url,
+          sessionToken, // Requerido por SDK Android: DiditSdk.startVerification(token = sessionToken)
         },
       };
     } catch (error) {
@@ -122,13 +134,13 @@ export class VerificationService {
     const isDeclined = status === 'Declined';
 
     if (!isVerified && !isDeclined) {
-      // Estados intermedios (In Progress, In Review, etc.) - solo log
+      // Estados intermedios (In Progress, In Review, etc.) - solo log (igual que en web)
       this.logger.log(`Estado intermedio recibido: ${status}`);
       return { success: true, message: 'Webhook procesado (estado intermedio)' };
     }
 
     try {
-      // Actualizar en la BD usando el session_id
+      // Actualizar en la BD usando el session_id (mismo flujo que web)
       const result = await this.databaseService.executeStoredProcedure(
         '[security].[xsp_UpdateIdentityVerification]',
         [
@@ -223,6 +235,16 @@ export class VerificationService {
   // ══════════════════════════════════════════════════
   // MÉTODOS PRIVADOS
   // ══════════════════════════════════════════════════
+
+  /**
+   * Extrae el session_token de la URL de Didit (ej: https://verify.didit.me/session/TOKEN -> TOKEN).
+   * Usado para exponer sessionToken al SDK Android cuando solo tenemos la URL guardada.
+   */
+  private extractTokenFromVerificationUrl(url: string | undefined): string | null {
+    if (!url || typeof url !== 'string') return null;
+    const match = url.trim().match(/\/session\/([^/?#]+)/i);
+    return match ? match[1] : null;
+  }
 
   /**
    * Obtiene el estado de verificación del usuario desde la BD
