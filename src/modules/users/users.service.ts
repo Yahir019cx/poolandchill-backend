@@ -166,7 +166,9 @@ export class UsersService {
         dateOfBirth: userData.DateOfBirth || null,
         gender: userData.Gender || null,
         isHostOnboarded: userData.IsHostOnboarded ?? 0,
-        roles: userData.Roles ? userData.Roles.split(',').filter(Boolean) : ['guest'],
+        roles: userData.Roles
+          ? userData.Roles.split(',').filter(Boolean)
+          : ['guest'],
         hasPassword: Boolean(userData.HasPassword),
         linkedProviders: userData.LinkedProviders
           ? userData.LinkedProviders.split(',').filter(Boolean)
@@ -188,7 +190,9 @@ export class UsersService {
         throw error;
       }
 
-      throw new InternalServerErrorException('Error al obtener el perfil. Intenta nuevamente.');
+      throw new InternalServerErrorException(
+        'Error al obtener el perfil. Intenta nuevamente.',
+      );
     }
   }
 
@@ -205,9 +209,18 @@ export class UsersService {
    * @returns Perfil actualizado
    * @throws BadRequestException si los datos son inválidos
    */
-  async updateProfile(userId: string, dto: UpdateProfileDto): Promise<UpdatedProfile> {
+  async updateProfile(
+    userId: string,
+    dto: UpdateProfileDto,
+  ): Promise<UpdatedProfile> {
     // Validar que al menos un campo venga en el body
-    if (!dto.displayName && !dto.bio && !dto.profileImageUrl && !dto.phoneNumber && !dto.location) {
+    if (
+      !dto.displayName &&
+      !dto.bio &&
+      !dto.profileImageUrl &&
+      !dto.phoneNumber &&
+      !dto.location
+    ) {
       throw new BadRequestException(
         'Debes proporcionar al menos un campo para actualizar (displayName, bio, profileImageUrl, phoneNumber o location)',
       );
@@ -231,11 +244,27 @@ export class UsersService {
         '[security].[xsp_update_user_profile]',
         [
           { name: 'UserId', type: sql.UniqueIdentifier, value: userId },
-          { name: 'DisplayName', type: sql.NVarChar(200), value: dto.displayName || null },
+          {
+            name: 'DisplayName',
+            type: sql.NVarChar(200),
+            value: dto.displayName || null,
+          },
           { name: 'Bio', type: sql.NVarChar(500), value: dto.bio || null },
-          { name: 'ProfileImageUrl', type: sql.NVarChar(500), value: dto.profileImageUrl || null },
-          { name: 'PhoneNumber', type: sql.NVarChar(20), value: formattedPhone },
-          { name: 'Location', type: sql.NVarChar(200), value: dto.location || null },
+          {
+            name: 'ProfileImageUrl',
+            type: sql.NVarChar(500),
+            value: dto.profileImageUrl || null,
+          },
+          {
+            name: 'PhoneNumber',
+            type: sql.NVarChar(20),
+            value: formattedPhone,
+          },
+          {
+            name: 'Location',
+            type: sql.NVarChar(200),
+            value: dto.location || null,
+          },
         ],
         [{ name: 'ErrorMessage', type: sql.NVarChar(500) }],
       );
@@ -297,7 +326,9 @@ export class UsersService {
         message: updatedData.Message || 'Perfil actualizado exitosamente',
       };
 
-      this.logger.log(`Perfil actualizado exitosamente para: ${updatedData.Email}`);
+      this.logger.log(
+        `Perfil actualizado exitosamente para: ${updatedData.Email}`,
+      );
 
       return updatedProfile;
     } catch (error) {
@@ -311,7 +342,9 @@ export class UsersService {
         throw error;
       }
 
-      throw new InternalServerErrorException('Error al actualizar el perfil. Intenta nuevamente.');
+      throw new InternalServerErrorException(
+        'Error al actualizar el perfil. Intenta nuevamente.',
+      );
     }
   }
 
@@ -323,7 +356,10 @@ export class UsersService {
    * @returns Perfil con imagen actualizada
    * @throws BadRequestException si la URL no es válida
    */
-  async updateProfileImage(userId: string, imageUrl: string): Promise<ImageUpdateResponse> {
+  async updateProfileImage(
+    userId: string,
+    imageUrl: string,
+  ): Promise<ImageUpdateResponse> {
     this.logger.log(`Actualizando imagen de perfil para usuario: ${userId}`);
 
     try {
@@ -353,23 +389,33 @@ export class UsersService {
         throw new InternalServerErrorException('Error al actualizar la imagen');
       }
 
-      this.logger.log(`Imagen de perfil actualizada para: ${updatedData.Email}`);
+      this.logger.log(
+        `Imagen de perfil actualizada para: ${updatedData.Email}`,
+      );
 
       return {
         userId: updatedData.UserId,
         firstName: updatedData.FirstName,
         lastName: updatedData.LastName,
         profileImageUrl: updatedData.ProfileImageUrl,
-        message: updatedData.Message || 'Imagen de perfil actualizada exitosamente',
+        message:
+          updatedData.Message || 'Imagen de perfil actualizada exitosamente',
       };
     } catch (error) {
-      this.logger.error(`Error actualizando imagen de perfil: ${error.message}`);
+      this.logger.error(
+        `Error actualizando imagen de perfil: ${error.message}`,
+      );
 
-      if (error instanceof BadRequestException || error instanceof InternalServerErrorException) {
+      if (
+        error instanceof BadRequestException ||
+        error instanceof InternalServerErrorException
+      ) {
         throw error;
       }
 
-      throw new InternalServerErrorException('Error al actualizar imagen de perfil. Intenta nuevamente.');
+      throw new InternalServerErrorException(
+        'Error al actualizar imagen de perfil. Intenta nuevamente.',
+      );
     }
   }
 
@@ -409,16 +455,22 @@ export class UsersService {
         firstName: updatedData.FirstName,
         lastName: updatedData.LastName,
         profileImageUrl: null,
-        message: updatedData.Message || 'Imagen de perfil eliminada exitosamente',
+        message:
+          updatedData.Message || 'Imagen de perfil eliminada exitosamente',
       };
     } catch (error) {
       this.logger.error(`Error eliminando imagen de perfil: ${error.message}`);
 
-      if (error instanceof BadRequestException || error instanceof InternalServerErrorException) {
+      if (
+        error instanceof BadRequestException ||
+        error instanceof InternalServerErrorException
+      ) {
         throw error;
       }
 
-      throw new InternalServerErrorException('Error al eliminar imagen de perfil. Intenta nuevamente.');
+      throw new InternalServerErrorException(
+        'Error al eliminar imagen de perfil. Intenta nuevamente.',
+      );
     }
   }
 
@@ -430,7 +482,9 @@ export class UsersService {
    * @returns Datos actualizados del usuario
    * @throws BadRequestException si hay error en el SP
    */
-  async completeHostOnboarding(userId: string): Promise<HostOnboardingResponse> {
+  async completeHostOnboarding(
+    userId: string,
+  ): Promise<HostOnboardingResponse> {
     this.logger.log(`Completando onboarding de host para usuario: ${userId}`);
 
     try {
@@ -461,7 +515,9 @@ export class UsersService {
         throw new BadRequestException('No se pudo completar el onboarding');
       }
 
-      this.logger.log(`Onboarding completado exitosamente para usuario: ${userId}`);
+      this.logger.log(
+        `Onboarding completado exitosamente para usuario: ${userId}`,
+      );
 
       return {
         success: true,
@@ -483,7 +539,19 @@ export class UsersService {
         throw error;
       }
 
-      throw new InternalServerErrorException('Error al completar el onboarding. Intenta nuevamente.');
+      throw new InternalServerErrorException(
+        'Error al completar el onboarding. Intenta nuevamente.',
+      );
     }
+  }
+
+  async getUserDataHost(): Promise<any[]> {
+    const result = await this.databaseService.executeStoredProcedure(
+      '[property].[xsp_GetUserDataHost]',
+      [], // No inputs
+      [], // No outputs
+    );
+
+    return result.recordset || [];
   }
 }
