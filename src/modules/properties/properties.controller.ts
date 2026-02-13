@@ -2,8 +2,10 @@ import {
   Controller,
   Get,
   Post,
+  Delete,
   Body,
   Query,
+  Param,
   UseGuards,
   Request,
   HttpCode,
@@ -18,7 +20,14 @@ import {
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PropertiesService } from './properties.service';
-import { CreatePropertyDto, ChangeStatusDto, DeletePropertyDto, SearchPropertiesDto } from './dto';
+import {
+  CreatePropertyDto,
+  ChangeStatusDto,
+  DeletePropertyDto,
+  SearchPropertiesDto,
+  AddFavoriteDto,
+  GetPropertyByIdDto,
+} from './dto';
 
 @ApiTags('Properties')
 @Controller('properties')
@@ -101,6 +110,162 @@ export class PropertiesController {
   })
   async search(@Query() dto: SearchPropertiesDto) {
     return this.propertiesService.searchProperties(dto);
+  }
+
+  // ══════════════════════════════════════════════════
+  // FAVORITOS (requieren autenticación)
+  // ══════════════════════════════════════════════════
+
+  @Get('favorites/ids')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'IDs de favoritos',
+    description: 'Lista solo los ID de propiedades favoritas (para pintar el corazón en home).',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Lista de IDs',
+    schema: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean', example: true },
+        data: {
+          type: 'object',
+          properties: {
+            propertyIds: {
+              type: 'array',
+              items: { type: 'string', format: 'uuid' },
+            },
+          },
+        },
+      },
+    },
+  })
+  @ApiResponse({ status: 401, description: 'No autenticado' })
+  async getFavoriteIds(@Request() req: any) {
+    const userId = req.user.userId;
+    return this.propertiesService.getUserFavoriteIds(userId);
+  }
+
+  @Get('favorites')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Listar favoritos',
+    description: 'Lista las propiedades favoritas del usuario (misma forma que search para la card).',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Lista de propiedades favoritas',
+    schema: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean', example: true },
+        data: {
+          type: 'object',
+          properties: {
+            properties: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  propertyId: { type: 'string', format: 'uuid' },
+                  propertyName: { type: 'string' },
+                  hasPool: { type: 'boolean' },
+                  hasCabin: { type: 'boolean' },
+                  hasCamping: { type: 'boolean' },
+                  location: { type: 'string' },
+                  priceFrom: { type: 'number' },
+                  images: { type: 'array' },
+                  rating: { type: 'string' },
+                  reviewCount: { type: 'number' },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  })
+  @ApiResponse({ status: 401, description: 'No autenticado' })
+  async getFavorites(@Request() req: any) {
+    const userId = req.user.userId;
+    return this.propertiesService.getUserFavorites(userId);
+  }
+
+  @Post('favorites')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Agregar a favoritos',
+    description: 'Agrega una propiedad a favoritos. Toggle: si ya está, devuelve error (el cliente puede llamar a DELETE).',
+  })
+  @ApiResponse({ status: 200, description: 'Agregado a favoritos' })
+  @ApiResponse({ status: 400, description: 'Propiedad no existe, no publicada o ya en favoritos' })
+  @ApiResponse({ status: 401, description: 'No autenticado' })
+  async addFavorite(@Request() req: any, @Body() dto: AddFavoriteDto) {
+    const userId = req.user.userId;
+    return this.propertiesService.addFavorite(userId, dto.propertyId);
+  }
+
+  @Delete('favorites/:propertyId')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Quitar de favoritos',
+    description: 'Quita una propiedad de favoritos (pulsar el corazón de nuevo).',
+  })
+  @ApiResponse({ status: 200, description: 'Eliminado de favoritos' })
+  @ApiResponse({ status: 401, description: 'No autenticado' })
+  async removeFavorite(@Request() req: any, @Param('propertyId') propertyId: string) {
+    const userId = req.user.userId;
+    return this.propertiesService.removeFavorite(userId, propertyId);
+  }
+
+  // ══════════════════════════════════════════════════
+  // DETALLE DE PROPIEDAD POR ID (body JSON)
+  // ══════════════════════════════════════════════════
+
+  @Post('by-id')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Obtener propiedad completa por ID',
+    description: `
+      Devuelve toda la información de una propiedad: datos generales, ubicación,
+      albercas con amenidades, cabañas con amenidades, áreas de camping con amenidades,
+      reglas e imágenes. Body JSON: solo es obligatorio propertyId; idOwner es opcional
+      (si se envía, solo devuelve la propiedad si pertenece a ese dueño).
+    `,
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Propiedad con todos sus datos',
+    schema: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean', example: true },
+        data: {
+          type: 'object',
+          properties: {
+            property: { type: 'object' },
+            pools: { type: 'array' },
+            cabins: { type: 'array' },
+            campingAreas: { type: 'array' },
+            rules: { type: 'array' },
+            images: { type: 'array' },
+          },
+        },
+      },
+    },
+  })
+  @ApiResponse({ status: 400, description: 'Propiedad no encontrada o ID inválido' })
+  async getPropertyById(@Body() dto: GetPropertyByIdDto) {
+    return this.propertiesService.getPropertyById(dto.propertyId, dto.idOwner ?? null);
   }
 
   // ══════════════════════════════════════════════════

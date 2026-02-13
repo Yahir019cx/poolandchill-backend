@@ -21,7 +21,7 @@ import { VerificationService } from './verification.service';
 import { DiditWebhookDto } from './dto';
 
 @ApiTags('Identity Verification')
-@Controller('verification')
+@Controller(['verification', 'kyc']) // /verification/start (web) y /kyc/start (móvil) usan el mismo flujo
 export class VerificationController {
   constructor(private readonly verificationService: VerificationService) {}
 
@@ -37,18 +37,23 @@ export class VerificationController {
     summary: 'Iniciar verificación de identidad',
     description: `
       Inicia una sesión de verificación de identidad con Didit.
-      Retorna una URL donde el usuario debe completar la verificación.
+      Mismo flujo para web y móvil (SDK Android).
+
+      **Rutas:** POST /verification/start o POST /kyc/start (alias para móvil).
+
+      **Web:** usar data.verificationUrl y abrir en navegador.
+      **Móvil:** usar data.sessionToken con DiditSdk.startVerification(token = sessionToken).
 
       **Flujo:**
-      1. El usuario llama a este endpoint
-      2. Se crea una sesión en Didit
-      3. El usuario es redirigido a la URL de verificación
-      4. Al completar, Didit notifica vía webhook
+      1. Usuario autenticado llama al endpoint
+      2. Backend crea sesión en Didit (DIDIT_API_KEY, DIDIT_WORKFLOW_ID, vendor_data = userId)
+      3. Backend guarda didit_session_id y retorna sessionToken (+ verificationUrl para web)
+      4. Didit notifica resultado vía webhook; backend actualiza estado
     `,
   })
   @ApiResponse({
     status: 200,
-    description: 'Sesión de verificación creada',
+    description: 'Sesión de verificación creada. Web usa verificationUrl; móvil usa sessionToken con DiditSdk.startVerification(token).',
     schema: {
       type: 'object',
       properties: {
@@ -61,6 +66,11 @@ export class VerificationController {
             verificationUrl: {
               type: 'string',
               example: 'https://verify.didit.me/session/abc123',
+            },
+            sessionToken: {
+              type: 'string',
+              description: 'Token para SDK Android: DiditSdk.startVerification(token = sessionToken). No exponer API key ni workflow en cliente.',
+              example: 'token_xxx',
             },
           },
         },

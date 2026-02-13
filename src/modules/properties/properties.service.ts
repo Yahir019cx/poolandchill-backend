@@ -423,19 +423,119 @@ export class PropertiesService {
         totalCount,
         page: dto.page ?? 1,
         pageSize: dto.pageSize ?? 20,
-        properties: properties.map((p: any) => ({
-          propertyId: p.ID_Property,
-          propertyName: p.PropertyName,
-          hasPool: p.HasPool,
-          hasCabin: p.HasCabin,
-          hasCamping: p.HasCamping,
-          location: p.Location,
-          priceFrom: p.PriceFrom,
-          images: p.Images ? JSON.parse(p.Images) : [],
-          rating: p.Rating === 0 || p.Rating === null ? 'Nuevo' : p.Rating,
-          reviewCount: p.ReviewCount ?? 0,
-        })),
+        properties: properties.map((p: any) => this.mapPropertyToCard(p)),
       },
+    };
+  }
+
+  /**
+   * Mapea una fila de propiedad (search/favorites) al formato de la card
+   */
+  private mapPropertyToCard(p: any) {
+    return {
+      propertyId: p.ID_Property,
+      propertyName: p.PropertyName,
+      hasPool: p.HasPool,
+      hasCabin: p.HasCabin,
+      hasCamping: p.HasCamping,
+      location: p.Location,
+      priceFrom: p.PriceFrom,
+      images: p.Images ? JSON.parse(p.Images) : [],
+      rating: p.Rating === 0 || p.Rating === null ? 'Nuevo' : p.Rating,
+      reviewCount: p.ReviewCount ?? 0,
+    };
+  }
+
+  // ══════════════════════════════════════════════════
+  // FAVORITOS
+  // ══════════════════════════════════════════════════
+
+  /**
+   * Agregar propiedad a favoritos del usuario
+   */
+  async addFavorite(userId: string, propertyId: string) {
+    const result = await this.databaseService.executeStoredProcedure(
+      '[property].[xsp_AddFavorite]',
+      [
+        { name: 'UserId', type: sql.UniqueIdentifier, value: userId },
+        { name: 'ID_Property', type: sql.UniqueIdentifier, value: propertyId },
+      ],
+      [
+        { name: 'ResultCode', type: sql.Int },
+        { name: 'ResultMessage', type: sql.NVarChar(500) },
+      ],
+    );
+
+    const { ResultCode, ResultMessage } = result.output;
+
+    if (ResultCode === 1) {
+      throw new BadRequestException(ResultMessage || 'La propiedad no existe o no está publicada.');
+    }
+    if (ResultCode === 2) {
+      throw new BadRequestException(ResultMessage || 'La propiedad ya está en favoritos.');
+    }
+
+    return {
+      success: true,
+      message: 'Agregado a favoritos',
+    };
+  }
+
+  /**
+   * Quitar propiedad de favoritos del usuario
+   */
+  async removeFavorite(userId: string, propertyId: string) {
+    await this.databaseService.executeStoredProcedure(
+      '[property].[xsp_RemoveFavorite]',
+      [
+        { name: 'UserId', type: sql.UniqueIdentifier, value: userId },
+        { name: 'ID_Property', type: sql.UniqueIdentifier, value: propertyId },
+      ],
+      [],
+    );
+
+    return {
+      success: true,
+      message: 'Eliminado de favoritos',
+    };
+  }
+
+  /**
+   * Listar favoritos del usuario (misma forma que search para reutilizar la card)
+   */
+  async getUserFavorites(userId: string) {
+    const result = await this.databaseService.executeStoredProcedure(
+      '[property].[xsp_GetUserFavorites]',
+      [{ name: 'UserId', type: sql.UniqueIdentifier, value: userId }],
+      [],
+    );
+
+    const properties = result.recordset || [];
+
+    return {
+      success: true,
+      data: {
+        properties: properties.map((p: any) => this.mapPropertyToCard(p)),
+      },
+    };
+  }
+
+  /**
+   * Solo IDs de favoritos (para pintar el corazón en home sin cargar la lista completa)
+   */
+  async getUserFavoriteIds(userId: string) {
+    const result = await this.databaseService.executeStoredProcedure(
+      '[property].[xsp_GetUserFavoriteIds]',
+      [{ name: 'UserId', type: sql.UniqueIdentifier, value: userId }],
+      [],
+    );
+
+    const rows = result.recordset || [];
+    const propertyIds = rows.map((r: any) => r.ID_Property);
+
+    return {
+      success: true,
+      data: { propertyIds },
     };
   }
 
@@ -505,6 +605,209 @@ export class PropertiesService {
         })),
       },
     };
+  }
+
+  /**
+   * Obtiene toda la información de una propiedad por ID (SP xsp_GetPropertyByID).
+   * Body JSON: { propertyId, idOwner? }. Si idOwner se envía, solo devuelve si la propiedad es del dueño.
+   */
+  async getPropertyById(propertyId: string, idOwner?: string | null) {
+    const pool = await this.databaseService.getConnection();
+    const request = pool.request();
+
+    request.input('ID_Property', sql.UniqueIdentifier, propertyId);
+    request.input('ID_Owner', sql.UniqueIdentifier, idOwner ?? null);
+
+    const result = await request.execute('[property].[xsp_GetPropertyByID]');
+    const recordsets = result.recordsets as any[];
+
+    // Validación: si el SP devolvió error (Code -1)
+    const firstRow = recordsets[0]?.[0];
+    if (firstRow?.Code === -1) {
+      throw new BadRequestException(firstRow.Message || 'Propiedad no encontrada.');
+    }
+
+    // 1. Property + Location (una fila)
+    const prop = recordsets[0]?.[0];
+    if (!prop) {
+      throw new BadRequestException('Propiedad no encontrada.');
+    }
+
+    const property = {
+      idProperty: prop.ID_Property,
+      idOwner: prop.ID_Owner,
+      propertyName: prop.PropertyName,
+      description: prop.Description ?? null,
+      hasPool: Boolean(prop.HasPool),
+      hasCabin: Boolean(prop.HasCabin),
+      hasCamping: Boolean(prop.HasCamping),
+      currentStep: prop.CurrentStep ?? 0,
+      status: {
+        idStatus: prop.ID_Status,
+        statusName: prop.StatusName,
+        statusCode: prop.StatusCode ?? null,
+      },
+      createdAt: prop.CreatedAt,
+      updatedAt: prop.UpdatedAt ?? null,
+      submittedAt: prop.SubmittedAt ?? null,
+      approvedAt: prop.ApprovedAt ?? null,
+      location: {
+        street: prop.Street ?? null,
+        exteriorNumber: prop.ExteriorNumber ?? null,
+        interiorNumber: prop.InteriorNumber ?? null,
+        neighborhood: prop.Neighborhood ?? null,
+        zipCode: prop.ZipCode ?? null,
+        idState: prop.ID_State ?? null,
+        stateName: prop.StateName ?? null,
+        idCity: prop.ID_City ?? null,
+        cityName: prop.CityName ?? null,
+        latitude: prop.Latitude ?? null,
+        longitude: prop.Longitude ?? null,
+        formattedAddress: prop.FormattedAddress ?? null,
+      },
+    };
+
+    // 2. Pools + Amenities (agrupar por ID_Pool)
+    const poolRows = recordsets[1] || [];
+    const pools = this.groupPoolAmenities(poolRows);
+
+    // 3. Cabins + Amenities
+    const cabinRows = recordsets[2] || [];
+    const cabins = this.groupCabinAmenities(cabinRows);
+
+    // 4. Camping + Amenities
+    const campingRows = recordsets[3] || [];
+    const campingAreas = this.groupCampingAmenities(campingRows);
+
+    // 5. Rules
+    const rules = (recordsets[4] || []).map((r: any) => ({
+      idPropertyRule: r.ID_PropertyRule,
+      ruleText: r.RuleText,
+      displayOrder: r.DisplayOrder ?? 0,
+    }));
+
+    // 6. Images
+    const images = (recordsets[5] || []).map((img: any) => ({
+      idPropertyImage: img.ID_PropertyImage,
+      imageURL: img.ImageURL,
+      isPrimary: Boolean(img.IsPrimary),
+      displayOrder: img.DisplayOrder ?? 0,
+    }));
+
+    return {
+      success: true,
+      data: {
+        property,
+        pools,
+        cabins,
+        campingAreas,
+        rules,
+        images,
+      },
+    };
+  }
+
+  private groupPoolAmenities(rows: any[]): any[] {
+    const byId = new Map<string, any>();
+    for (const r of rows) {
+      const id = r.ID_Pool;
+      if (!id) continue;
+      if (!byId.has(id)) {
+        byId.set(id, {
+          idPool: r.ID_Pool,
+          idProperty: r.ID_Property,
+          maxPersons: r.MaxPersons ?? null,
+          temperatureMin: r.TemperatureMin ?? null,
+          temperatureMax: r.TemperatureMax ?? null,
+          checkInTime: r.CheckInTime ?? null,
+          checkOutTime: r.CheckOutTime ?? null,
+          maxHours: r.MaxHours ?? null,
+          minHours: r.MinHours ?? null,
+          priceWeekday: r.PriceWeekday ?? null,
+          priceWeekend: r.PriceWeekend ?? null,
+          securityDeposit: r.SecurityDeposit ?? null,
+          amenities: [],
+        });
+      }
+      if (r.AmenityName) {
+        byId.get(id).amenities.push({
+          amenityName: r.AmenityName,
+          amenityCode: r.AmenityCode,
+          icon: r.Icon ?? null,
+          quantity: r.Quantity ?? 1,
+        });
+      }
+    }
+    return Array.from(byId.values());
+  }
+
+  private groupCabinAmenities(rows: any[]): any[] {
+    const byId = new Map<string, any>();
+    for (const r of rows) {
+      const id = r.ID_Cabin;
+      if (!id) continue;
+      if (!byId.has(id)) {
+        byId.set(id, {
+          idCabin: r.ID_Cabin,
+          idProperty: r.ID_Property,
+          maxGuests: r.MaxGuests ?? null,
+          bedrooms: r.Bedrooms ?? null,
+          singleBeds: r.SingleBeds ?? null,
+          doubleBeds: r.DoubleBeds ?? null,
+          fullBathrooms: r.FullBathrooms ?? null,
+          halfBathrooms: r.HalfBathrooms ?? null,
+          checkInTime: r.CheckInTime ?? null,
+          checkOutTime: r.CheckOutTime ?? null,
+          minNights: r.MinNights ?? null,
+          priceWeekday: r.PriceWeekday ?? null,
+          priceWeekend: r.PriceWeekend ?? null,
+          securityDeposit: r.SecurityDeposit ?? null,
+          amenities: [],
+        });
+      }
+      if (r.AmenityName) {
+        byId.get(id).amenities.push({
+          amenityName: r.AmenityName,
+          amenityCode: r.AmenityCode,
+          icon: r.Icon ?? null,
+          quantity: r.Quantity ?? 1,
+        });
+      }
+    }
+    return Array.from(byId.values());
+  }
+
+  private groupCampingAmenities(rows: any[]): any[] {
+    const byId = new Map<string, any>();
+    for (const r of rows) {
+      const id = r.ID_CampingArea;
+      if (!id) continue;
+      if (!byId.has(id)) {
+        byId.set(id, {
+          idCampingArea: r.ID_CampingArea,
+          idProperty: r.ID_Property,
+          maxPersons: r.MaxPersons ?? null,
+          areaSquareMeters: r.AreaSquareMeters ?? null,
+          approxTents: r.ApproxTents ?? null,
+          checkInTime: r.CheckInTime ?? null,
+          checkOutTime: r.CheckOutTime ?? null,
+          minNights: r.MinNights ?? null,
+          priceWeekday: r.PriceWeekday ?? null,
+          priceWeekend: r.PriceWeekend ?? null,
+          securityDeposit: r.SecurityDeposit ?? null,
+          amenities: [],
+        });
+      }
+      if (r.AmenityName) {
+        byId.get(id).amenities.push({
+          amenityName: r.AmenityName,
+          amenityCode: r.AmenityCode,
+          icon: r.Icon ?? null,
+          quantity: r.Quantity ?? 1,
+        });
+      }
+    }
+    return Array.from(byId.values());
   }
 
   // ══════════════════════════════════════════════════
