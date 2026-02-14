@@ -16,9 +16,10 @@ import {
   ApiExcludeEndpoint,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { AdminRoleGuard } from '../admin/guards/admin-role.guard';
 import { DiditWebhookGuard } from './guards/didit-webhook.guard';
 import { VerificationService } from './verification.service';
-import { DiditWebhookDto } from './dto';
+import { DiditWebhookDto, SendVerificationEmailDto } from './dto';
 
 @ApiTags('Identity Verification')
 @Controller(['verification', 'kyc']) // /verification/start (web) y /kyc/start (móvil) usan el mismo flujo
@@ -114,6 +115,39 @@ export class VerificationController {
   async getStatus(@Request() req: any) {
     const userId = req.user.userId;
     return this.verificationService.getVerificationStatus(userId);
+  }
+
+  // ══════════════════════════════════════════════════
+  // ENVÍO DE CORREO (PANEL ADMIN - VERIFICACIONES ANFITRIONES)
+  // ══════════════════════════════════════════════════
+
+  @Post('send-verification-email')
+  @UseGuards(JwtAuthGuard, AdminRoleGuard)
+  @ApiBearerAuth('JWT-auth')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Enviar correo de verificación al anfitrión',
+    description: `
+      Envía un correo al anfitrión con un botón que lleva a FRONTEND_URL/login.
+      Tras el login, el frontend redirige a /verification/start y al flujo Didit.
+      Solo administradores. Usado desde el panel de Verificaciones de Anfitriones.
+    `,
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Correo enviado',
+    schema: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean', example: true },
+        message: { type: 'string', example: 'Correo de verificación enviado.' },
+      },
+    },
+  })
+  @ApiResponse({ status: 404, description: 'Usuario no encontrado' })
+  @ApiResponse({ status: 403, description: 'Sin permisos de administrador' })
+  async sendVerificationEmail(@Body() dto: SendVerificationEmailDto) {
+    return this.verificationService.sendVerificationEmail(dto.userId);
   }
 
   // ══════════════════════════════════════════════════
