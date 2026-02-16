@@ -41,6 +41,27 @@ export interface LoginResponse {
 }
 
 /**
+ * Respuesta del endpoint de login con Google (POST /auth/google).
+ * Incluye isNewUser para indicar si el usuario se registró en este login.
+ */
+export interface GoogleLoginResponse {
+  /** Access Token JWT del sistema (15 minutos de validez) */
+  accessToken: string;
+
+  /** Refresh Token UUID (90 días de validez) */
+  refreshToken: string;
+
+  /** Tiempo de expiración del Access Token en segundos */
+  expiresIn: number;
+
+  /** Datos del usuario autenticado */
+  user: LoginUserData;
+
+  /** true si el usuario fue creado en este login (primera vez con Google) */
+  isNewUser: boolean;
+}
+
+/**
  * Respuesta del endpoint de refresh token
  */
 export interface RefreshResponse {
