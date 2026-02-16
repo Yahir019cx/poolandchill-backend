@@ -26,7 +26,9 @@ export class AdminService {
     request.input('PageNumber', sql.Int, page);
     request.input('PageSize', sql.Int, pageSize);
 
-    const result = await request.execute('[property].[xsp_GetPendingProperties]');
+    const result = await request.execute(
+      '[property].[xsp_GetPendingProperties]',
+    );
 
     const recordsets = result.recordsets as any[];
     const totalCount = recordsets[0]?.[0]?.TotalCount || 0;
@@ -58,6 +60,16 @@ export class AdminService {
     };
   }
 
+  async getAllProperties(): Promise<any[]> {
+    const result = await this.databaseService.executeStoredProcedure(
+      '[property].[xsp_GetAllProperties]',
+      [], // No inputs
+      [], // No outputs
+    );
+
+    return result.recordset || [];
+  }
+
   /**
    * Aprobar propiedad
    */
@@ -78,7 +90,8 @@ export class AdminService {
 
     if (ResultCode !== 0) {
       throw new BadRequestException(
-        ResultMessage || 'Propiedad no encontrada o no está pendiente de revisión.',
+        ResultMessage ||
+          'Propiedad no encontrada o no está pendiente de revisión.',
       );
     }
 
@@ -90,9 +103,19 @@ export class AdminService {
         ownerData.PropertyName,
       );
       this.zohoMailService
-        .sendMail(ownerData.Email, 'Tu propiedad ha sido aprobada - Pool & Chill', html)
-        .then(() => this.logger.log(`Email de aprobación enviado a ${ownerData.Email}`))
-        .catch((err) => this.logger.error(`Error enviando email de aprobación: ${err.message}`));
+        .sendMail(
+          ownerData.Email,
+          'Tu propiedad ha sido aprobada - Pool & Chill',
+          html,
+        )
+        .then(() =>
+          this.logger.log(`Email de aprobación enviado a ${ownerData.Email}`),
+        )
+        .catch((err) =>
+          this.logger.error(
+            `Error enviando email de aprobación: ${err.message}`,
+          ),
+        );
     }
 
     return {
@@ -122,7 +145,8 @@ export class AdminService {
 
     if (ResultCode !== 0) {
       throw new BadRequestException(
-        ResultMessage || 'Propiedad no encontrada o no está pendiente de revisión.',
+        ResultMessage ||
+          'Propiedad no encontrada o no está pendiente de revisión.',
       );
     }
 
@@ -135,9 +159,17 @@ export class AdminService {
         reason,
       );
       this.zohoMailService
-        .sendMail(ownerData.Email, 'Actualización sobre tu propiedad - Pool & Chill', html)
-        .then(() => this.logger.log(`Email de rechazo enviado a ${ownerData.Email}`))
-        .catch((err) => this.logger.error(`Error enviando email de rechazo: ${err.message}`));
+        .sendMail(
+          ownerData.Email,
+          'Actualización sobre tu propiedad - Pool & Chill',
+          html,
+        )
+        .then(() =>
+          this.logger.log(`Email de rechazo enviado a ${ownerData.Email}`),
+        )
+        .catch((err) =>
+          this.logger.error(`Error enviando email de rechazo: ${err.message}`),
+        );
     }
 
     return {
@@ -174,6 +206,33 @@ export class AdminService {
     return {
       success: true,
       message: 'Propiedad suspendida.',
+    };
+  }
+
+  async UpdateStateProperty(Op: number, propertyId: string) {
+    const result = await this.databaseService.executeStoredProcedure(
+      '[property].[xsp_UpdateStateProperty]',
+      [
+        { name: 'ID_Property', type: sql.UniqueIdentifier, value: propertyId },
+        { name: 'Op', type: sql.Int, value: Op },
+      ],
+      [
+        { name: 'ResultCode', type: sql.Int },
+        { name: 'ResultMessage', type: sql.NVarChar(500) },
+      ],
+    );
+
+    const { ResultCode, ResultMessage } = result.output;
+
+    if (ResultCode !== 0) {
+      throw new BadRequestException(
+        ResultMessage || 'No se pudo actualizar la propiedad.',
+      );
+    }
+
+    return {
+      success: true,
+      message: ResultMessage || 'Operación realizada correctamente.',
     };
   }
 }
