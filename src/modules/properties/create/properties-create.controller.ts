@@ -17,7 +17,7 @@ import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { PropertiesCreateService } from './properties-create.service';
 import { CreatePropertyDto } from '../dto';
 
-@ApiTags('Properties')
+@ApiTags('Properties · Crear / Leer')
 @Controller('properties')
 export class PropertiesCreateController {
   constructor(private readonly createService: PropertiesCreateService) {}

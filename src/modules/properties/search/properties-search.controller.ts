@@ -3,7 +3,7 @@ import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { PropertiesSearchService } from './properties-search.service';
 import { SearchPropertiesDto } from '../dto';
 
-@ApiTags('Properties')
+@ApiTags('Properties · Búsqueda')
 @Controller('properties')
 export class PropertiesSearchController {
   constructor(private readonly searchService: PropertiesSearchService) {}

@@ -20,7 +20,7 @@ import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { PropertiesReadService } from './properties-read.service';
 import { GetPropertyByIdDto } from '../dto';
 
-@ApiTags('Properties')
+@ApiTags('Properties · Crear / Leer')
 @Controller('properties')
 export class PropertiesReadController {
   constructor(private readonly readService: PropertiesReadService) {}

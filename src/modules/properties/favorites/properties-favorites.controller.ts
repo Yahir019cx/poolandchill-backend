@@ -19,7 +19,7 @@ import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { PropertiesFavoritesService } from './properties-favorites.service';
 import { AddFavoriteDto } from '../dto';
 
-@ApiTags('Properties')
+@ApiTags('Properties · Favoritos')
 @Controller('properties/favorites')
 export class PropertiesFavoritesController {
   constructor(private readonly favoritesService: PropertiesFavoritesService) {}

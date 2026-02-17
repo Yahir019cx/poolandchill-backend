@@ -17,7 +17,7 @@ import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { PropertiesStatusService } from './properties-status.service';
 import { ChangeStatusDto, DeletePropertyDto } from '../dto';
 
-@ApiTags('Properties')
+@ApiTags('Properties · Owner (estado / eliminar)')
 @Controller('properties/owner')
 export class PropertiesStatusController {
   constructor(private readonly statusService: PropertiesStatusService) {}

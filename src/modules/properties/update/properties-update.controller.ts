@@ -28,7 +28,7 @@ import {
   DeletePropertyImageDto,
 } from '../dto/update-property.dto';
 
-@ApiTags('Properties')
+@ApiTags('Properties · Editar')
 @Controller('properties/update')
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth('JWT-auth')
