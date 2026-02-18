@@ -6,7 +6,9 @@ import { Logger, ValidationPipe } from '@nestjs/common';
 import { DatabaseService } from './config/database.config';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, {
+    rawBody: true, // Necesario para validar firma de webhooks (Stripe)
+  });
 
   app.useGlobalPipes(
     new ValidationPipe({
