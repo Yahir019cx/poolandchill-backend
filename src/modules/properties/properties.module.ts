@@ -1,29 +1,65 @@
 import { Module } from '@nestjs/common';
-import { PropertiesController } from './properties.controller';
-import { CatalogsController } from './catalogs.controller';
-import { PropertiesService } from './properties.service';
 import { AuthModule } from '../auth/auth.module';
 import { EmailModule } from '../../web/email/email.module';
 
+import { PropertiesCreateController } from './create/properties-create.controller';
+import { PropertiesCreateService } from './create/properties-create.service';
+
+import { PropertiesSearchController } from './search/properties-search.controller';
+import { PropertiesSearchService } from './search/properties-search.service';
+
+import { PropertiesFavoritesController, PropertiesFavoritesService } from './favorites';
+
+import { PropertiesReadController } from './read/properties-read.controller';
+import { PropertiesReadService } from './read/properties-read.service';
+
+import { PropertiesStatusController } from './status/properties-status.controller';
+import { PropertiesStatusService } from './status/properties-status.service';
+
+import { PropertiesUpdateController } from './update/properties-update.controller';
+import { PropertiesUpdateService } from './update/properties-update.service';
+
+import { CatalogsController } from './catalogs/catalogs.controller';
+import { CatalogsService } from './catalogs/catalogs.service';
+
 /**
- * Módulo de propiedades
+ * Módulo de propiedades (separado por responsabilidad).
  *
- * Gestiona el registro y administración de propiedades:
- * - POST /properties - Crear propiedad completa (wizard)
- * - GET /properties/my - Listar propiedades del dueño
- * - GET /properties/search - Buscar propiedades
- * - PATCH /properties/:id/status - Pausar/Reactivar
- * - DELETE /properties/:id - Eliminar
- *
- * Catálogos (en /catalogs):
- * - GET /catalogs/amenities - Catálogo amenidades
- * - GET /catalogs/states - Catálogo estados
- * - GET /catalogs/cities/:stateId - Catálogo ciudades
+ * - create: POST /properties - Crear propiedad (wizard)
+ * - search: GET /properties/search - Buscar propiedades
+ * - favorites: GET/POST/DELETE /properties/favorites - Favoritos
+ * - read: GET /properties/my, POST /properties/by-id - Consultas owner y detalle
+ * - status: POST /properties/owner/status, POST /properties/owner/delete
+ * - catalogs: GET /catalogs/amenities|states|cities
  */
 @Module({
   imports: [AuthModule, EmailModule],
-  controllers: [PropertiesController, CatalogsController],
-  providers: [PropertiesService],
-  exports: [PropertiesService],
+  controllers: [
+    PropertiesCreateController,
+    PropertiesSearchController,
+    PropertiesFavoritesController,
+    PropertiesReadController,
+    PropertiesStatusController,
+    PropertiesUpdateController,
+    CatalogsController,
+  ],
+  providers: [
+    PropertiesCreateService,
+    PropertiesSearchService,
+    PropertiesFavoritesService,
+    PropertiesReadService,
+    PropertiesStatusService,
+    PropertiesUpdateService,
+    CatalogsService,
+  ],
+  exports: [
+    PropertiesCreateService,
+    PropertiesSearchService,
+    PropertiesFavoritesService,
+    PropertiesReadService,
+    PropertiesStatusService,
+    PropertiesUpdateService,
+    CatalogsService,
+  ],
 })
 export class PropertiesModule {}
