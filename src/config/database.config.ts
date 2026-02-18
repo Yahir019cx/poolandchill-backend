@@ -115,6 +115,22 @@ export class DatabaseService implements OnModuleDestroy {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
+  async executeQuery<T = any>(
+    query: string,
+    inputs: { name: string; type: sql.ISqlType | sql.ISqlTypeFactoryWithNoParams; value: any }[] = [],
+  ): Promise<T[]> {
+    const pool = await this.getConnection();
+    const request = pool.request();
+
+    for (const input of inputs) {
+      request.input(input.name, input.type, input.value);
+    }
+
+    const result = await request.query(query);
+
+    return result.recordset as T[];
+  }
+
   async executeStoredProcedure<T = any>(
     spName: string,
     inputs: { name: string; type: sql.ISqlType | sql.ISqlTypeFactoryWithNoParams; value: any }[],

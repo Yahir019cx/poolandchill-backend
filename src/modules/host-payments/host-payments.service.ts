@@ -51,12 +51,22 @@ export class HostPaymentsService {
         webhookSecret,
       ) as Stripe.Event;
     } catch (err: any) {
+      this.logger.error(`Error verificando firma del webhook: ${err?.message}`);
       throw new BadRequestException(`Firma de webhook inválida: ${err?.message}`);
     }
 
-    if (event.type === 'account.updated') {
+    this.logger.log(`Webhook recibido: ${event.type} (ID: ${event.id})`);
+
+    // Procesar eventos de cuenta (account.updated está en tipos de Stripe; account.created se trata igual)
+    const accountEventType = event.type as string;
+    if (accountEventType === 'account.created' || accountEventType === 'account.updated') {
       const account = event.data.object as Stripe.Account;
+      if (accountEventType === 'account.created') {
+        this.logger.log(`Cuenta creada: ${account.id}`);
+      }
       await this.handleAccountUpdated(account);
+    } else {
+      this.logger.debug(`Evento no procesado: ${event.type}`);
     }
 
     return { received: true };
@@ -123,9 +133,27 @@ export class HostPaymentsService {
     const onboardingCompleted = chargesEnabled && payoutsEnabled;
     const accountStatus = chargesEnabled && payoutsEnabled ? 'active' : 'pending';
 
-    const userId = await this.getUserIdByStripeAccountId(stripeAccountId);
+    this.logger.log(
+      `Procesando cuenta ${stripeAccountId}: charges=${chargesEnabled}, payouts=${payoutsEnabled}, details=${detailsSubmitted}`,
+    );
+
+    // Intentar obtener userId desde metadata primero (si está disponible)
+    let userId: string | null | undefined = account.metadata?.userId;
+
+    // Si no está en metadata, buscar en BD
     if (!userId) {
-      this.logger.warn(`Webhook account.updated: no se encontró UserId para StripeAccountId=${stripeAccountId}`);
+      userId = await this.getUserIdByStripeAccountId(stripeAccountId);
+    }
+
+    if (!userId) {
+      this.logger.warn(
+        `No se encontró UserId para StripeAccountId=${stripeAccountId}. Metadata: ${JSON.stringify(account.metadata)}`,
+      );
+      // Intentar buscar por email si está disponible
+      if (account.email) {
+        this.logger.warn(`Intentando buscar por email: ${account.email}`);
+        // Nota: Podrías agregar un método para buscar por email si es necesario
+      }
       return;
     }
 
@@ -144,7 +172,7 @@ export class HostPaymentsService {
     });
 
     this.logger.log(
-      `Webhook account.updated: ${stripeAccountId} -> status=${accountStatus}, onboarding=${onboardingCompleted}`,
+      `Cuenta actualizada en BD: ${stripeAccountId} -> UserId=${userId}, status=${accountStatus}, onboarding=${onboardingCompleted}`,
     );
   }
 
