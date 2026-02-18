@@ -1,5 +1,6 @@
 import {
   Controller,
+  Get,
   Post,
   Body,
   Req,
@@ -57,6 +58,42 @@ export class HostPaymentsController {
       throw new BadRequestException('UserId es requerido');
     }
     return this.hostPaymentsService.createConnectAccount(userId);
+  }
+
+  @Get('account-status')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: 'Estado de la cuenta Stripe Connect del host',
+    description: `
+      Devuelve chargesEnabled, payoutsEnabled y onboardingCompleted.
+      Opcionalmente refresca el estado desde Stripe (útil tras el deep link
+      por si el webhook aún no ha llegado).
+      El front debe llamar a completeHostOnboarding() solo cuando
+      chargesEnabled === true && payoutsEnabled === true.
+    `,
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Estado de la cuenta',
+    schema: {
+      type: 'object',
+      properties: {
+        hasAccount: { type: 'boolean' },
+        chargesEnabled: { type: 'boolean' },
+        payoutsEnabled: { type: 'boolean' },
+        onboardingCompleted: { type: 'boolean' },
+        accountStatus: { type: 'string' },
+      },
+    },
+  })
+  @ApiResponse({ status: 401, description: 'No autenticado' })
+  async getAccountStatus(@Req() req: any) {
+    const userId = req.user?.userId;
+    if (!userId) {
+      throw new BadRequestException('UserId es requerido');
+    }
+    return this.hostPaymentsService.getAccountStatus(userId, { refreshFromStripe: true });
   }
 
   @Post('webhook')

@@ -139,23 +139,6 @@ export class DatabaseService implements OnModuleDestroy {
     };
   }
 
-  /**
-   * Ejecuta una consulta SQL parametrizada y devuelve el recordset.
-   * Útil para SELECT por ejemplo para obtener UserId por StripeAccountId.
-   */
-  async executeQuery<T = any>(
-    queryText: string,
-    inputs: { name: string; type: sql.ISqlType | sql.ISqlTypeFactoryWithNoParams; value: any }[] = [],
-  ): Promise<T[]> {
-    const pool = await this.getConnection();
-    const request = pool.request();
-    for (const input of inputs) {
-      request.input(input.name, input.type, input.value);
-    }
-    const result = await request.query(queryText);
-    return (result.recordset ?? []) as T[];
-  }
-
   async onModuleDestroy() {
     if (this.pool) {
       await this.pool.close();
