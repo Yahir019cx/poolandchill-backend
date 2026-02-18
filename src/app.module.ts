@@ -8,6 +8,7 @@ import { PropertiesModule } from './modules/properties/properties.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { VerificationModule } from './modules/verification/verification.module';
 import { BookingModule } from './modules/booking/booking.module';
+import { PricingModule } from './modules/pricing/pricing.module';
 import { DatabaseModule } from './config/database.module';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
@@ -46,6 +47,7 @@ import { join } from 'path';
     AdminModule,
     VerificationModule,
     BookingModule,
+    PricingModule,
   ],
 })
 export class AppModule {}
