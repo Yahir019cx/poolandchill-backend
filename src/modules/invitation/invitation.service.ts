@@ -1,0 +1,45 @@
+import {
+  Injectable,
+  Logger,
+  InternalServerErrorException,
+} from '@nestjs/common';
+import * as sql from 'mssql';
+import { DatabaseService } from '../../config/database.config';
+import { CreateInvitationDto } from './dto';
+
+@Injectable()
+export class InvitationService {
+  private readonly logger = new Logger(InvitationService.name);
+
+  constructor(private readonly databaseService: DatabaseService) {}
+
+  async createInvitation(dto: CreateInvitationDto) {
+    const { nombre, numero, correo, invitados } = dto;
+
+    this.logger.log(`Creating invitation for: ${correo}`);
+
+    try {
+      const result = await this.databaseService.executeStoredProcedure(
+        'xsp_InsertInvitation',
+        [
+          { name: 'Nombre', type: sql.NVarChar(100), value: nombre },
+          { name: 'Numero', type: sql.NVarChar(20), value: numero },
+          { name: 'Correo', type: sql.NVarChar(100), value: correo },
+          { name: 'Invitados', type: sql.Int, value: invitados },
+        ],
+        [],
+      );
+
+      this.logger.log(`Invitation created successfully for: ${correo}`);
+
+      return {
+        ok: true,
+        nombre: result?.recordset?.[0]?.Nombre || nombre,
+        correo: result?.recordset?.[0]?.Correo || correo,
+      };
+    } catch (error) {
+      this.logger.error('Error creating invitation', error);
+      throw new InternalServerErrorException('Error al crear invitación');
+    }
+  }
+}
