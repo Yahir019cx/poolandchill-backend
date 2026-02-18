@@ -5,58 +5,43 @@ import {
   InternalServerErrorException,
 } from '@nestjs/common';
 import * as sql from 'mssql';
-import { DatabaseService } from '../../config/database.config';
-import { ZohoMailService } from '../../web/email/zoho-mail.service';
-import { propertyInReviewTemplate } from '../../web/email/templates';
+import { DatabaseService } from '../../../config/database.config';
+import { ZohoMailService } from '../../../web/email/zoho-mail.service';
+import { propertyInReviewTemplate } from '../../../web/email/templates';
 import {
   CreatePropertyDto,
   PoolAmenitiesDto,
   CabinAmenitiesDto,
   CampingAmenitiesDto,
-  SearchPropertiesDto,
-} from './dto';
+} from '../dto';
 
 @Injectable()
-export class PropertiesService {
-  private readonly logger = new Logger(PropertiesService.name);
+export class PropertiesCreateService {
+  private readonly logger = new Logger(PropertiesCreateService.name);
 
   constructor(
     private readonly databaseService: DatabaseService,
     private readonly zohoMailService: ZohoMailService,
   ) {}
 
-  /**
-   * Convierte string "HH:mm" a Date para sql.Time
-   */
   private parseTime(timeStr: string | undefined): Date | null {
     if (!timeStr) return null;
     const [hours, minutes] = timeStr.split(':').map(Number);
-    const date = new Date(1970, 0, 1, hours, minutes, 0);
-    return date;
+    return new Date(1970, 0, 1, hours, minutes, 0);
   }
 
-  /**
-   * Crea una propiedad completa ejecutando todos los SPs en secuencia
-   */
   async createProperty(userId: string, dto: CreatePropertyDto) {
     this.logger.log(`Creando propiedad para usuario: ${userId}`);
 
-    // Validar que al menos un servicio esté seleccionado
     if (!dto.services.hasPool && !dto.services.hasCabin && !dto.services.hasCamping) {
       throw new BadRequestException('Debe seleccionar al menos un servicio (pool, cabin o camping)');
     }
 
     try {
-      // 1. Crear propiedad base
       const propertyId = await this.executeCreateProperty(userId, dto);
-
-      // 2. Guardar ubicación
       await this.executeSaveLocation(propertyId, dto);
-
-      // 3. Guardar info básica + precios
       await this.executeSaveBasicInfo(propertyId, dto);
 
-      // 4. Guardar amenidades (según servicios seleccionados)
       if (dto.services.hasPool && dto.amenities.pool) {
         await this.executeSavePoolAmenities(propertyId, dto.amenities.pool);
       }
@@ -67,18 +52,12 @@ export class PropertiesService {
         await this.executeSaveCampingAmenities(propertyId, dto.amenities.camping);
       }
 
-      // 5. Guardar reglas
       await this.executeSaveRules(propertyId, dto);
-
-      // 6. Guardar imágenes
       await this.executeSaveImages(propertyId, dto);
-
-      // 7. Enviar a revisión
       await this.executeSubmitForReview(propertyId, userId);
 
       this.logger.log(`Propiedad ${propertyId} creada y enviada a revisión`);
 
-      // Enviar email de confirmación (fire-and-forget)
       this.getUserEmail(userId).then((email) => {
         if (!email) {
           this.logger.warn(`No se envió email de revisión: no se encontró email para usuario ${userId}`);
@@ -106,9 +85,6 @@ export class PropertiesService {
     }
   }
 
-  /**
-   * Obtiene el email del usuario desde la BD
-   */
   private async getUserEmail(userId: string): Promise<string | null> {
     const result = await this.databaseService.executeStoredProcedure(
       '[security].[xsp_GetUserEmail]',
@@ -119,13 +95,9 @@ export class PropertiesService {
         { name: 'Email', type: sql.NVarChar(256) },
       ],
     );
-
     return result.output?.Email || null;
   }
 
-  /**
-   * SP 1: Crear propiedad base
-   */
   private async executeCreateProperty(userId: string, dto: CreatePropertyDto): Promise<string> {
     const result = await this.databaseService.executeStoredProcedure(
       '[property].[xsp_CreateProperty]',
@@ -143,20 +115,14 @@ export class PropertiesService {
     );
 
     const { ID_Property, ResultCode, ResultMessage } = result.output;
-
     if (ResultCode !== 0) {
       throw new BadRequestException(ResultMessage || 'Error al crear la propiedad');
     }
-
     return ID_Property;
   }
 
-  /**
-   * SP 2: Guardar ubicación
-   */
   private async executeSaveLocation(propertyId: string, dto: CreatePropertyDto): Promise<void> {
     const loc = dto.location;
-
     const result = await this.databaseService.executeStoredProcedure(
       '[property].[xsp_SavePropertyLocation]',
       [
@@ -180,41 +146,35 @@ export class PropertiesService {
     );
 
     const { ResultCode, ResultMessage } = result.output;
-
     if (ResultCode !== 0) {
       throw new BadRequestException(ResultMessage || 'Error al guardar la ubicación');
     }
   }
 
-  /**
-   * SP 3: Guardar info básica + precios
-   */
   private async executeSaveBasicInfo(propertyId: string, dto: CreatePropertyDto): Promise<void> {
     const info = dto.basicInfo;
-
     const result = await this.databaseService.executeStoredProcedure(
       '[property].[xsp_SavePropertyBasicInfo]',
       [
         { name: 'ID_Property', type: sql.UniqueIdentifier, value: propertyId },
         { name: 'PropertyName', type: sql.NVarChar(100), value: info.propertyName },
         { name: 'Description', type: sql.NVarChar(2000), value: info.description || null },
-        // Pool
         { name: 'Pool_CheckInTime', type: sql.Time, value: this.parseTime(info.pool?.checkInTime) },
         { name: 'Pool_CheckOutTime', type: sql.Time, value: this.parseTime(info.pool?.checkOutTime) },
         { name: 'Pool_MaxHours', type: sql.TinyInt, value: info.pool?.maxHours ?? null },
         { name: 'Pool_MinHours', type: sql.TinyInt, value: info.pool?.minHours ?? null },
         { name: 'Pool_PriceWeekday', type: sql.Decimal(10, 2), value: info.pool?.priceWeekday ?? null },
         { name: 'Pool_PriceWeekend', type: sql.Decimal(10, 2), value: info.pool?.priceWeekend ?? null },
-        // Cabin
         { name: 'Cabin_CheckInTime', type: sql.Time, value: this.parseTime(info.cabin?.checkInTime) },
         { name: 'Cabin_CheckOutTime', type: sql.Time, value: this.parseTime(info.cabin?.checkOutTime) },
         { name: 'Cabin_MinNights', type: sql.TinyInt, value: info.cabin?.minNights ?? null },
+        { name: 'Cabin_MaxNights', type: sql.TinyInt, value: info.cabin?.maxNights ?? null },
         { name: 'Cabin_PriceWeekday', type: sql.Decimal(10, 2), value: info.cabin?.priceWeekday ?? null },
         { name: 'Cabin_PriceWeekend', type: sql.Decimal(10, 2), value: info.cabin?.priceWeekend ?? null },
-        // Camping
         { name: 'Camping_CheckInTime', type: sql.Time, value: this.parseTime(info.camping?.checkInTime) },
         { name: 'Camping_CheckOutTime', type: sql.Time, value: this.parseTime(info.camping?.checkOutTime) },
         { name: 'Camping_MinNights', type: sql.TinyInt, value: info.camping?.minNights ?? null },
+        { name: 'Camping_MaxNights', type: sql.TinyInt, value: info.camping?.maxNights ?? null },
         { name: 'Camping_PriceWeekday', type: sql.Decimal(10, 2), value: info.camping?.priceWeekday ?? null },
         { name: 'Camping_PriceWeekend', type: sql.Decimal(10, 2), value: info.camping?.priceWeekend ?? null },
       ],
@@ -225,15 +185,11 @@ export class PropertiesService {
     );
 
     const { ResultCode, ResultMessage } = result.output;
-
     if (ResultCode !== 0) {
       throw new BadRequestException(ResultMessage || 'Error al guardar la información básica');
     }
   }
 
-  /**
-   * SP 4a: Guardar amenidades de pool
-   */
   private async executeSavePoolAmenities(propertyId: string, amenities: PoolAmenitiesDto): Promise<void> {
     const result = await this.databaseService.executeStoredProcedure(
       '[property].[xsp_SavePoolAmenities]',
@@ -251,15 +207,11 @@ export class PropertiesService {
     );
 
     const { ResultCode, ResultMessage } = result.output;
-
     if (ResultCode !== 0) {
       throw new BadRequestException(ResultMessage || 'Error al guardar amenidades de alberca');
     }
   }
 
-  /**
-   * SP 4b: Guardar amenidades de cabin
-   */
   private async executeSaveCabinAmenities(propertyId: string, amenities: CabinAmenitiesDto): Promise<void> {
     const result = await this.databaseService.executeStoredProcedure(
       '[property].[xsp_SaveCabinAmenities]',
@@ -280,15 +232,11 @@ export class PropertiesService {
     );
 
     const { ResultCode, ResultMessage } = result.output;
-
     if (ResultCode !== 0) {
       throw new BadRequestException(ResultMessage || 'Error al guardar amenidades de cabaña');
     }
   }
 
-  /**
-   * SP 4c: Guardar amenidades de camping
-   */
   private async executeSaveCampingAmenities(propertyId: string, amenities: CampingAmenitiesDto): Promise<void> {
     const result = await this.databaseService.executeStoredProcedure(
       '[property].[xsp_SaveCampingAmenities]',
@@ -306,15 +254,11 @@ export class PropertiesService {
     );
 
     const { ResultCode, ResultMessage } = result.output;
-
     if (ResultCode !== 0) {
       throw new BadRequestException(ResultMessage || 'Error al guardar amenidades de camping');
     }
   }
 
-  /**
-   * SP 5: Guardar reglas
-   */
   private async executeSaveRules(propertyId: string, dto: CreatePropertyDto): Promise<void> {
     const result = await this.databaseService.executeStoredProcedure(
       '[property].[xsp_SavePropertyRules]',
@@ -329,15 +273,11 @@ export class PropertiesService {
     );
 
     const { ResultCode, ResultMessage } = result.output;
-
     if (ResultCode !== 0) {
       throw new BadRequestException(ResultMessage || 'Error al guardar las reglas');
     }
   }
 
-  /**
-   * SP 6: Guardar imágenes
-   */
   private async executeSaveImages(propertyId: string, dto: CreatePropertyDto): Promise<void> {
     const result = await this.databaseService.executeStoredProcedure(
       '[media].[xsp_SavePropertyImages]',
@@ -352,15 +292,11 @@ export class PropertiesService {
     );
 
     const { ResultCode, ResultMessage } = result.output;
-
     if (ResultCode !== 0) {
       throw new BadRequestException(ResultMessage || 'Error al guardar las imágenes');
     }
   }
 
-  /**
-   * SP 7: Enviar a revisión
-   */
   private async executeSubmitForReview(propertyId: string, userId: string): Promise<void> {
     const result = await this.databaseService.executeStoredProcedure(
       '[property].[xsp_SubmitPropertyForReview]',
@@ -375,251 +311,8 @@ export class PropertiesService {
     );
 
     const { ResultCode, ResultMessage } = result.output;
-
     if (ResultCode !== 0) {
       throw new BadRequestException(ResultMessage || 'Error al enviar a revisión');
     }
-  }
-
-  // ══════════════════════════════════════════════════
-  // BÚSQUEDA PÚBLICA
-  // ══════════════════════════════════════════════════
-
-  /**
-   * Buscar propiedades con filtros (público)
-   */
-  async searchProperties(dto: SearchPropertiesDto) {
-    // Solo enviar true al SP, si es false o undefined enviar null (no filtrar)
-    const hasPoolValue = dto.hasPool === true ? true : null;
-    const hasCabinValue = dto.hasCabin === true ? true : null;
-    const hasCampingValue = dto.hasCamping === true ? true : null;
-
-    const result = await this.databaseService.executeStoredProcedure(
-      '[property].[xsp_SearchProperties]',
-      [
-        { name: 'HasPool', type: sql.Bit, value: hasPoolValue },
-        { name: 'HasCabin', type: sql.Bit, value: hasCabinValue },
-        { name: 'HasCamping', type: sql.Bit, value: hasCampingValue },
-        { name: 'ID_State', type: sql.TinyInt, value: dto.stateId ?? null },
-        { name: 'ID_City', type: sql.Int, value: dto.cityId ?? null },
-        { name: 'MinPrice', type: sql.Decimal(10, 2), value: dto.minPrice ?? null },
-        { name: 'MaxPrice', type: sql.Decimal(10, 2), value: dto.maxPrice ?? null },
-        { name: 'SearchText', type: sql.NVarChar(100), value: dto.search ?? null },
-        { name: 'SortBy', type: sql.VarChar(20), value: dto.sortBy ?? 'newest' },
-        { name: 'PageNumber', type: sql.Int, value: dto.page ?? 1 },
-        { name: 'PageSize', type: sql.Int, value: dto.pageSize ?? 20 },
-      ],
-      [],
-    );
-
-    const properties = result.recordset || [];
-    const totalCount = properties[0]?.TotalCount || 0;
-
-    return {
-      success: true,
-      data: {
-        totalCount,
-        page: dto.page ?? 1,
-        pageSize: dto.pageSize ?? 20,
-        properties: properties.map((p: any) => ({
-          propertyId: p.ID_Property,
-          propertyName: p.PropertyName,
-          hasPool: p.HasPool,
-          hasCabin: p.HasCabin,
-          hasCamping: p.HasCamping,
-          location: p.Location,
-          priceFrom: p.PriceFrom,
-          images: p.Images ? JSON.parse(p.Images) : [],
-          rating: p.Rating === 0 || p.Rating === null ? 'Nuevo' : p.Rating,
-          reviewCount: p.ReviewCount ?? 0,
-        })),
-      },
-    };
-  }
-
-  // ══════════════════════════════════════════════════
-  // CONSULTAS (PRIVADAS - OWNER)
-  // ══════════════════════════════════════════════════
-
-  /**
-   * Obtener propiedades del owner
-   */
-  async getMyProperties(
-    userId: string,
-    status?: number,
-    page: number = 1,
-    pageSize: number = 10,
-  ) {
-    const pool = await this.databaseService.getConnection();
-    const request = pool.request();
-
-    request.input('ID_Owner', sql.UniqueIdentifier, userId);
-    request.input('ID_Status', sql.TinyInt, status || null);
-    request.input('PageNumber', sql.Int, page);
-    request.input('PageSize', sql.Int, pageSize);
-
-    const result = await request.execute('[property].[xsp_GetOwnerProperties]');
-
-    // El SP retorna 2 result sets: [0] = TotalCount, [1] = Properties
-    const recordsets = result.recordsets as any[];
-    const totalCount = recordsets[0]?.[0]?.TotalCount || 0;
-    const properties = recordsets[1] || [];
-
-    return {
-      success: true,
-      data: {
-        totalCount,
-        page,
-        pageSize,
-        properties: properties.map((p: any) => ({
-          propertyId: p.ID_Property,
-          propertyName: p.PropertyName,
-          description: p.Description || null,
-          hasPool: Boolean(p.HasPool),
-          hasCabin: Boolean(p.HasCabin),
-          hasCamping: Boolean(p.HasCamping),
-          currentStep: p.CurrentStep ?? 0,
-          status: {
-            id: p.ID_Status,
-            name: p.StatusName,
-            code: p.StatusCode || null,
-          },
-          priceFrom: p.PriceFrom ?? 0,
-          images: p.Images
-            ? JSON.parse(p.Images).map((img: any) => ({
-                imageUrl: img.ImageURL,
-                isPrimary: Boolean(img.IsPrimary),
-                displayOrder: img.DisplayOrder ?? 0,
-              }))
-            : [],
-          location: {
-            formattedAddress: p.FormattedAddress || null,
-            city: p.CityName || null,
-            state: p.StateName || null,
-          },
-          createdAt: p.CreatedAt,
-          updatedAt: p.UpdatedAt || null,
-          submittedAt: p.SubmittedAt || null,
-        })),
-      },
-    };
-  }
-
-  // ══════════════════════════════════════════════════
-  // GESTIÓN DE ESTADO
-  // ══════════════════════════════════════════════════
-
-  /**
-   * Cambiar estado de propiedad (pausar/reactivar)
-   */
-  async changeStatus(userId: string, propertyId: string, newStatus: number) {
-    const result = await this.databaseService.executeStoredProcedure(
-      '[property].[xsp_ChangePropertyStatus]',
-      [
-        { name: 'ID_Property', type: sql.UniqueIdentifier, value: propertyId },
-        { name: 'ID_Owner', type: sql.UniqueIdentifier, value: userId },
-        { name: 'NewStatus', type: sql.TinyInt, value: newStatus },
-      ],
-      [
-        { name: 'ResultCode', type: sql.Int },
-        { name: 'ResultMessage', type: sql.NVarChar(500) },
-      ],
-    );
-
-    const { ResultCode, ResultMessage } = result.output;
-
-    if (ResultCode !== 0) {
-      throw new BadRequestException(ResultMessage || 'Error al cambiar el estado');
-    }
-
-    return {
-      success: true,
-      message: newStatus === 3 ? 'Propiedad reactivada' : 'Propiedad pausada',
-    };
-  }
-
-  /**
-   * Eliminar propiedad (soft delete)
-   */
-  async deleteProperty(userId: string, propertyId: string) {
-    const result = await this.databaseService.executeStoredProcedure(
-      '[property].[xsp_DeleteProperty]',
-      [
-        { name: 'ID_Property', type: sql.UniqueIdentifier, value: propertyId },
-        { name: 'ID_Owner', type: sql.UniqueIdentifier, value: userId },
-      ],
-      [
-        { name: 'ResultCode', type: sql.Int },
-        { name: 'ResultMessage', type: sql.NVarChar(500) },
-      ],
-    );
-
-    const { ResultCode, ResultMessage } = result.output;
-
-    if (ResultCode !== 0) {
-      throw new BadRequestException(ResultMessage || 'Error al eliminar la propiedad');
-    }
-
-    return {
-      success: true,
-      message: 'Propiedad eliminada',
-    };
-  }
-
-  // ══════════════════════════════════════════════════
-  // CATÁLOGOS
-  // ══════════════════════════════════════════════════
-
-  /**
-   * Obtener amenidades por categoría
-   */
-  async getAmenities(category?: string) {
-    console.log('[getAmenities] Llamado con category:', category || 'todas');
-    const result = await this.databaseService.executeStoredProcedure(
-      '[catalog].[xsp_GetAmenitiesByCategory]',
-      [
-        { name: 'CategoryCode', type: sql.VarChar(100), value: category || null },
-      ],
-      [],
-    );
-
-    return {
-      success: true,
-      data: result.recordset || [],
-    };
-  }
-
-  /**
-   * Obtener estados
-   */
-  async getStates() {
-    const result = await this.databaseService.executeStoredProcedure(
-      '[catalog].[xsp_GetStates]',
-      [],
-      [],
-    );
-
-    return {
-      success: true,
-      data: result.recordset || [],
-    };
-  }
-
-  /**
-   * Obtener ciudades por estado
-   */
-  async getCities(stateId: number) {
-    const result = await this.databaseService.executeStoredProcedure(
-      '[catalog].[xsp_GetCitiesByState]',
-      [
-        { name: 'ID_State', type: sql.TinyInt, value: stateId },
-      ],
-      [],
-    );
-
-    return {
-      success: true,
-      data: result.recordset || [],
-    };
   }
 }

@@ -23,6 +23,14 @@ import { RefreshService } from './refresh/refresh.service';
 import { LogoutController } from './logout/logout.controller';
 import { LogoutService } from './logout/logout.service';
 
+// Forgot Password
+import { ForgotPasswordController } from './forgot-password/forgot-password.controller';
+import { ForgotPasswordService } from './forgot-password/forgot-password.service';
+
+// Google Auth (ID Token validation server-side)
+import { GoogleAuthController } from './google-auth/google-auth.controller';
+import { GoogleAuthService } from './google-auth/google-auth.service';
+
 // JWT Strategy & Guard
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
@@ -46,6 +54,9 @@ import { ZohoMailService } from '../../web/email/zoho-mail.service';
  * - POST /auth/login - Iniciar sesión (retorna Access Token y Refresh Token)
  * - POST /auth/refresh - Refrescar Access Token
  * - POST /auth/logout - Cerrar sesión (revocar Refresh Tokens)
+ * - POST /auth/forgot-password - Solicitar recuperación de contraseña
+ * - POST /auth/reset-password - Restablecer contraseña con token
+ * - POST /auth/google - Login con Google (idToken validado server-side)
  */
 @Module({
   imports: [
@@ -68,6 +79,8 @@ import { ZohoMailService } from '../../web/email/zoho-mail.service';
     LoginController,
     RefreshController,
     LogoutController,
+    ForgotPasswordController,
+    GoogleAuthController,
   ],
   providers: [
     RegisterService,
@@ -75,6 +88,8 @@ import { ZohoMailService } from '../../web/email/zoho-mail.service';
     LoginService,
     RefreshService,
     LogoutService,
+    ForgotPasswordService,
+    GoogleAuthService,
     JwtStrategy,
     JwtAuthGuard,
     ZohoMailService,
@@ -85,6 +100,8 @@ import { ZohoMailService } from '../../web/email/zoho-mail.service';
     LoginService,
     RefreshService,
     LogoutService,
+    ForgotPasswordService,
+    GoogleAuthService,
     JwtAuthGuard,
     JwtStrategy,
   ],
