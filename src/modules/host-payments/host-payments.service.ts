@@ -10,6 +10,7 @@ import * as sql from 'mssql';
 import { DatabaseService } from '../../config/database.config';
 
 const SP_REGISTER_STRIPE_ACCOUNT = '[payment].[xsp_RegisterStripeAccount]';
+const SP_GET_STRIPE_ACCOUNT_BY_USER_ID = '[payment].[xsp_GetStripeAccountByUserId]';
 
 @Injectable()
 export class HostPaymentsService {
@@ -50,12 +51,22 @@ export class HostPaymentsService {
         webhookSecret,
       ) as Stripe.Event;
     } catch (err: any) {
+      this.logger.error(`Error verificando firma del webhook: ${err?.message}`);
       throw new BadRequestException(`Firma de webhook inválida: ${err?.message}`);
     }
 
-    if (event.type === 'account.updated') {
+    this.logger.log(`Webhook recibido: ${event.type} (ID: ${event.id})`);
+
+    // Procesar eventos de cuenta (account.updated está en tipos de Stripe; account.created se trata igual)
+    const accountEventType = event.type as string;
+    if (accountEventType === 'account.created' || accountEventType === 'account.updated') {
       const account = event.data.object as Stripe.Account;
+      if (accountEventType === 'account.created') {
+        this.logger.log(`Cuenta creada: ${account.id}`);
+      }
       await this.handleAccountUpdated(account);
+    } else {
+      this.logger.debug(`Evento no procesado: ${event.type}`);
     }
 
     return { received: true };
@@ -67,8 +78,9 @@ export class HostPaymentsService {
    */
   async createConnectAccount(userId: string): Promise<{ onboardingUrl: string }> {
     const stripe = this.getStripe();
-    const frontendUrl = this.configService.get<string>('FRONTEND_URL', 'https://poolandchill.com.mx');
-    const backendUrl = this.configService.get<string>('BACKEND_URL', 'http://localhost:3000');
+    // Deep links para app móvil (Flutter). Override con STRIPE_RETURN_URL / STRIPE_REFRESH_URL si usas web.
+    const returnUrl = this.configService.get<string>('STRIPE_RETURN_URL', 'poolandchill://stripe/return');
+    const refreshUrl = this.configService.get<string>('STRIPE_REFRESH_URL', 'poolandchill://stripe/refresh');
 
     try {
       const account = await stripe.accounts.create({
@@ -80,8 +92,8 @@ export class HostPaymentsService {
       const accountLink = await stripe.accountLinks.create({
         account: account.id,
         type: 'account_onboarding',
-        refresh_url: `${frontendUrl}/stripe/refresh`,
-        return_url: `${frontendUrl}/stripe/return`,
+        refresh_url: refreshUrl,
+        return_url: returnUrl,
       });
 
       await this.registerStripeAccountInDb({
@@ -121,9 +133,27 @@ export class HostPaymentsService {
     const onboardingCompleted = chargesEnabled && payoutsEnabled;
     const accountStatus = chargesEnabled && payoutsEnabled ? 'active' : 'pending';
 
-    const userId = await this.getUserIdByStripeAccountId(stripeAccountId);
+    this.logger.log(
+      `Procesando cuenta ${stripeAccountId}: charges=${chargesEnabled}, payouts=${payoutsEnabled}, details=${detailsSubmitted}`,
+    );
+
+    // Intentar obtener userId desde metadata primero (si está disponible)
+    let userId: string | null | undefined = account.metadata?.userId;
+
+    // Si no está en metadata, buscar en BD
     if (!userId) {
-      this.logger.warn(`Webhook account.updated: no se encontró UserId para StripeAccountId=${stripeAccountId}`);
+      userId = await this.getUserIdByStripeAccountId(stripeAccountId);
+    }
+
+    if (!userId) {
+      this.logger.warn(
+        `No se encontró UserId para StripeAccountId=${stripeAccountId}. Metadata: ${JSON.stringify(account.metadata)}`,
+      );
+      // Intentar buscar por email si está disponible
+      if (account.email) {
+        this.logger.warn(`Intentando buscar por email: ${account.email}`);
+        // Nota: Podrías agregar un método para buscar por email si es necesario
+      }
       return;
     }
 
@@ -142,7 +172,7 @@ export class HostPaymentsService {
     });
 
     this.logger.log(
-      `Webhook account.updated: ${stripeAccountId} -> status=${accountStatus}, onboarding=${onboardingCompleted}`,
+      `Cuenta actualizada en BD: ${stripeAccountId} -> UserId=${userId}, status=${accountStatus}, onboarding=${onboardingCompleted}`,
     );
   }
 
@@ -152,6 +182,85 @@ export class HostPaymentsService {
       [{ name: 'StripeAccountId', type: sql.VarChar(100), value: stripeAccountId }],
     );
     return rows[0]?.UserId ?? null;
+  }
+
+  private async getStripeAccountByUserId(userId: string): Promise<{
+    StripeAccountId: string;
+    ChargesEnabled: boolean;
+    PayoutsEnabled: boolean;
+    AccountStatus: string;
+    OnboardingCompleted: boolean;
+  } | null> {
+    const result = await this.databaseService.executeStoredProcedure<{
+      StripeAccountId: string;
+      ChargesEnabled: boolean;
+      PayoutsEnabled: boolean;
+      AccountStatus: string;
+      OnboardingCompleted: boolean;
+    }>(
+      SP_GET_STRIPE_ACCOUNT_BY_USER_ID,
+      [{ name: 'UserId', type: sql.UniqueIdentifier, value: userId }],
+      [],
+    );
+    return result.recordset?.[0] ?? null;
+  }
+
+  /**
+   * Devuelve el estado de la cuenta Stripe del host para el userId.
+   * Opcionalmente refresca desde la API de Stripe y actualiza BD (útil cuando
+   * el usuario vuelve por deep link y el webhook aún no ha llegado).
+   * El front debe llamar a completeHostOnboarding() solo si
+   * chargesEnabled === true && payoutsEnabled === true.
+   */
+  async getAccountStatus(
+    userId: string,
+    options: { refreshFromStripe?: boolean } = {},
+  ): Promise<{
+    hasAccount: boolean;
+    chargesEnabled: boolean;
+    payoutsEnabled: boolean;
+    onboardingCompleted: boolean;
+    accountStatus: string;
+  }> {
+    const { refreshFromStripe = true } = options;
+    const row = await this.getStripeAccountByUserId(userId);
+    if (!row) {
+      return {
+        hasAccount: false,
+        chargesEnabled: false,
+        payoutsEnabled: false,
+        onboardingCompleted: false,
+        accountStatus: 'none',
+      };
+    }
+
+    if (refreshFromStripe) {
+      try {
+        const account = await this.getStripe().accounts.retrieve(row.StripeAccountId);
+        await this.handleAccountUpdated(account);
+        const updated = await this.getStripeAccountByUserId(userId);
+        if (updated) {
+          return {
+            hasAccount: true,
+            chargesEnabled: updated.ChargesEnabled,
+            payoutsEnabled: updated.PayoutsEnabled,
+            onboardingCompleted: updated.OnboardingCompleted,
+            accountStatus: updated.AccountStatus,
+          };
+        }
+      } catch (err: any) {
+        this.logger.warn(`No se pudo refrescar cuenta Stripe para ${userId}: ${err?.message}`);
+        // Fallback: devolver lo que tenemos en BD
+      }
+    }
+
+    return {
+      hasAccount: true,
+      chargesEnabled: row.ChargesEnabled,
+      payoutsEnabled: row.PayoutsEnabled,
+      onboardingCompleted: row.OnboardingCompleted,
+      accountStatus: row.AccountStatus,
+    };
   }
 
   /**

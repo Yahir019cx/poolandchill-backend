@@ -1,5 +1,6 @@
 import {
   Controller,
+  Get,
   Post,
   Body,
   Req,
@@ -8,6 +9,7 @@ import {
   HttpCode,
   HttpStatus,
   UseGuards,
+  Res,
 } from '@nestjs/common';
 import type { RawBodyRequest } from '@nestjs/common';
 import {
@@ -17,7 +19,7 @@ import {
   ApiBearerAuth,
   ApiExcludeEndpoint,
 } from '@nestjs/swagger';
-import type { Request } from 'express';
+import type { Request, Response } from 'express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { HostPaymentsService } from './host-payments.service';
 import { CreateConnectAccountDto } from './dto/create-connect-account.dto';
@@ -59,6 +61,42 @@ export class HostPaymentsController {
     return this.hostPaymentsService.createConnectAccount(userId);
   }
 
+  @Get('account-status')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: 'Estado de la cuenta Stripe Connect del host',
+    description: `
+      Devuelve chargesEnabled, payoutsEnabled y onboardingCompleted.
+      Opcionalmente refresca el estado desde Stripe (útil tras el deep link
+      por si el webhook aún no ha llegado).
+      El front debe llamar a completeHostOnboarding() solo cuando
+      chargesEnabled === true && payoutsEnabled === true.
+    `,
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Estado de la cuenta',
+    schema: {
+      type: 'object',
+      properties: {
+        hasAccount: { type: 'boolean' },
+        chargesEnabled: { type: 'boolean' },
+        payoutsEnabled: { type: 'boolean' },
+        onboardingCompleted: { type: 'boolean' },
+        accountStatus: { type: 'string' },
+      },
+    },
+  })
+  @ApiResponse({ status: 401, description: 'No autenticado' })
+  async getAccountStatus(@Req() req: any) {
+    const userId = req.user?.userId;
+    if (!userId) {
+      throw new BadRequestException('UserId es requerido');
+    }
+    return this.hostPaymentsService.getAccountStatus(userId, { refreshFromStripe: true });
+  }
+
   @Post('webhook')
   @HttpCode(HttpStatus.OK)
   @ApiExcludeEndpoint()
@@ -71,5 +109,27 @@ export class HostPaymentsController {
       throw new BadRequestException('Cuerpo o firma del webhook ausentes');
     }
     return this.hostPaymentsService.processWebhook(rawBody, signature);
+  }
+
+  /**
+   * Endpoint de redirección para cuando el usuario completa el onboarding de Stripe.
+   * Redirige al deep link de la app móvil: poolandchill://stripe/return
+   */
+  @Get('return')
+  @ApiExcludeEndpoint()
+  async handleReturn(@Res() res: Response) {
+    // Redirigir al deep link de la app móvil
+    res.redirect('poolandchill://stripe/return');
+  }
+
+  /**
+   * Endpoint de redirección para cuando el usuario necesita refrescar el onboarding de Stripe.
+   * Redirige al deep link de la app móvil: poolandchill://stripe/refresh
+   */
+  @Get('refresh')
+  @ApiExcludeEndpoint()
+  async handleRefresh(@Res() res: Response) {
+    // Redirigir al deep link de la app móvil
+    res.redirect('poolandchill://stripe/refresh');
   }
 }
