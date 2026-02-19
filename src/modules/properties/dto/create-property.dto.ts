@@ -118,18 +118,6 @@ export class PoolPricingDto {
   @IsString()
   checkOutTime: string;
 
-  @ApiProperty({ example: 12 })
-  @IsInt()
-  @Min(1)
-  @Max(24)
-  maxHours: number;
-
-  @ApiPropertyOptional({ example: 4 })
-  @IsOptional()
-  @IsInt()
-  @Min(1)
-  minHours?: number;
-
   @ApiProperty({ example: 1500.0 })
   @IsNumber()
   @Min(0)

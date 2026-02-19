@@ -161,8 +161,6 @@ export class PropertiesCreateService {
         { name: 'Description', type: sql.NVarChar(2000), value: info.description || null },
         { name: 'Pool_CheckInTime', type: sql.Time, value: this.parseTime(info.pool?.checkInTime) },
         { name: 'Pool_CheckOutTime', type: sql.Time, value: this.parseTime(info.pool?.checkOutTime) },
-        { name: 'Pool_MaxHours', type: sql.TinyInt, value: info.pool?.maxHours ?? null },
-        { name: 'Pool_MinHours', type: sql.TinyInt, value: info.pool?.minHours ?? null },
         { name: 'Pool_PriceWeekday', type: sql.Decimal(10, 2), value: info.pool?.priceWeekday ?? null },
         { name: 'Pool_PriceWeekend', type: sql.Decimal(10, 2), value: info.pool?.priceWeekend ?? null },
         { name: 'Cabin_CheckInTime', type: sql.Time, value: this.parseTime(info.cabin?.checkInTime) },

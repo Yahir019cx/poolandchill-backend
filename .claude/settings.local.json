@@ -5,7 +5,8 @@
       "Bash(pnpm run build:*)",
       "WebFetch(domain:docs.didit.me)",
       "Bash(where:*)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(cat:*)"
     ]
   }
 }
