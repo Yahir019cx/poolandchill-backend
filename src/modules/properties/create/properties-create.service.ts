@@ -53,7 +53,7 @@ export class PropertiesCreateService {
       }
 
       await this.executeSaveRules(propertyId, dto);
-      await this.executeSaveImages(propertyId, dto);
+      await this.executeSaveImages(propertyId, userId, dto);
       await this.executeSubmitForReview(propertyId, userId);
 
       this.logger.log(`Propiedad ${propertyId} creada y enviada a revisión`);
@@ -276,11 +276,12 @@ export class PropertiesCreateService {
     }
   }
 
-  private async executeSaveImages(propertyId: string, dto: CreatePropertyDto): Promise<void> {
+  private async executeSaveImages(propertyId: string, userId: string, dto: CreatePropertyDto): Promise<void> {
     const result = await this.databaseService.executeStoredProcedure(
       '[media].[xsp_SavePropertyImages]',
       [
         { name: 'ID_Property', type: sql.UniqueIdentifier, value: propertyId },
+        { name: 'ID_Owner', type: sql.UniqueIdentifier, value: userId },
         { name: 'ImagesJSON', type: sql.NVarChar(sql.MAX), value: JSON.stringify(dto.images) },
       ],
       [

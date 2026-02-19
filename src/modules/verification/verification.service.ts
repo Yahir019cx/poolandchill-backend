@@ -52,16 +52,12 @@ export class VerificationService {
 
       // Si tiene una sesión pendiente, retornar esa URL y token (para SDK móvil)
       if (userStatus.pendingSessionId && userStatus.verificationUrl) {
-        const sessionToken =
-          this.extractTokenFromVerificationUrl(userStatus.verificationUrl) ||
-          userStatus.pendingSessionId;
         return {
           success: true,
           message: 'Ya existe una sesión de verificación pendiente',
           data: {
             sessionId: userStatus.pendingSessionId,
             verificationUrl: userStatus.verificationUrl,
-            sessionToken,
           },
         };
       }
@@ -78,6 +74,7 @@ export class VerificationService {
           workflow_id: workflowId,
           callback: callbackUrl,
           vendor_data: userId, // Nuestro userId para identificar en el webhook
+          redirect_url: this.configService.get<string>('DIDIT_REDIRECT_URL'),
         }),
       });
 
@@ -113,7 +110,6 @@ export class VerificationService {
         data: {
           sessionId: diditResponse.session_id,
           verificationUrl: diditResponse.url,
-          sessionToken, // Requerido por SDK Android: DiditSdk.startVerification(token = sessionToken)
         },
       };
     } catch (error) {
