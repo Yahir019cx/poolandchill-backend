@@ -118,18 +118,6 @@ export class PoolPricingDto {
   @IsString()
   checkOutTime: string;
 
-  @ApiProperty({ example: 12 })
-  @IsInt()
-  @Min(1)
-  @Max(24)
-  maxHours: number;
-
-  @ApiPropertyOptional({ example: 4 })
-  @IsOptional()
-  @IsInt()
-  @Min(1)
-  minHours?: number;
-
   @ApiProperty({ example: 1500.0 })
   @IsNumber()
   @Min(0)
@@ -204,20 +192,6 @@ export class CampingPricingDto {
   @Min(0)
   priceWeekend: number;
 
-  /** No se usa en camping (es por día completo). Permitido solo para no fallar si el frontend lo envía por error. */
-  @ApiPropertyOptional({ description: 'Ignorado en camping; solo aplica a pool. No enviar para camping.' })
-  @IsOptional()
-  @IsInt()
-  @Min(1)
-  @Max(24)
-  maxHours?: number;
-
-  /** No se usa en camping (es por día completo). Permitido solo para no fallar si el frontend lo envía por error. */
-  @ApiPropertyOptional({ description: 'Ignorado en camping; solo aplica a pool. No enviar para camping.' })
-  @IsOptional()
-  @IsInt()
-  @Min(1)
-  minHours?: number;
 }
 
 export class BasicInfoDto {

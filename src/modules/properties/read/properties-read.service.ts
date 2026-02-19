@@ -169,8 +169,6 @@ export class PropertiesReadService {
           temperatureMax: r.TemperatureMax ?? null,
           checkInTime: r.CheckInTime ?? null,
           checkOutTime: r.CheckOutTime ?? null,
-          maxHours: r.MaxHours ?? null,
-          minHours: r.MinHours ?? null,
           priceWeekday: r.PriceWeekday ?? null,
           priceWeekend: r.PriceWeekend ?? null,
           securityDeposit: r.SecurityDeposit ?? null,
