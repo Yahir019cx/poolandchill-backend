@@ -24,7 +24,7 @@ import { join } from 'path';
     ThrottlerModule.forRoot([
       {
         name: 'short',
-        ttl: 60000, // 1 minuto
+        ttl: 60000, // 1 minuto   
         limit: 10, // 10 requests por minuto (default)
       },
       {
