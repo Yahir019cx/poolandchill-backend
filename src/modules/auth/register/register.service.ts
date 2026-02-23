@@ -57,8 +57,6 @@ export class RegisterService {
   async register(registerDto: RegisterDto): Promise<RegisterResponse> {
     const { email, firstName, lastName, phoneNumber, password, dateOfBirth, gender, type } = registerDto;
 
-    this.logger.log(`Iniciando registro para: ${email}`);
-
     // Normalizar teléfono: agregar +52 si no tiene código de país
     const normalizedPhone = phoneNumber.startsWith('+') ? phoneNumber : `+52${phoneNumber}`;
 
@@ -90,8 +88,6 @@ export class RegisterService {
 
     // 5. Enviar email de verificación (type viaja en la URL del email)
     await this.sendVerificationEmail(email, firstName, verificationToken, type);
-
-    this.logger.log(`Registro pendiente creado para: ${email}, ID: ${pendingRegistration.registrationId}`);
 
     return {
       success: true,
@@ -191,7 +187,6 @@ export class RegisterService {
         'Verifica tu cuenta en Pool & Chill',
         htmlContent,
       );
-      this.logger.log(`Email de verificación enviado a: ${email}`);
     } catch (error) {
       this.logger.error(`Error al enviar email de verificación: ${error.message}`);
       throw new InternalServerErrorException('Error al enviar el email de verificación. Intenta nuevamente.');

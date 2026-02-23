@@ -33,7 +33,6 @@ export class ZohoMailService {
       },
     });
 
-    this.logger.log(`Zoho Mail transporter configurado en ${host}:${port}`);
   }
 
   async sendMail(
@@ -62,8 +61,7 @@ export class ZohoMailService {
     }
 
     try {
-      const info = await this.transporter.sendMail(mailOptions);
-      this.logger.log(`Email enviado exitosamente a ${to}. MessageId: ${info.messageId}`);
+      await this.transporter.sendMail(mailOptions);
       return { ok: true, to, attachmentsCount: attachments?.length || 0 };
     } catch (error) {
       this.logger.error(`Error al enviar email a ${to}: ${error.message}`, error.stack);

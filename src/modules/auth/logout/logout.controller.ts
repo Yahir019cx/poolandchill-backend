@@ -84,9 +84,7 @@ Cierra la sesión del usuario revocando todos sus Refresh Tokens.
   })
   async logout(@Request() req: any): Promise<LogoutResponse> {
     const userId = req.user.userId;
-    this.logger.log(`Solicitud de logout para usuario: ${userId}`);
     const result = await this.logoutService.logout(userId);
-    this.logger.log(`Logout completado exitosamente para usuario: ${userId}`);
     return result;
   }
 }

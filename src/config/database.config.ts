@@ -84,7 +84,6 @@ export class DatabaseService implements OnModuleDestroy {
           throw error;
         }
 
-        this.logger.warn(`Reintentando en ${delay}ms...`);
         await this.sleep(delay);
       }
     }
@@ -96,8 +95,6 @@ export class DatabaseService implements OnModuleDestroy {
     if (this.connecting) return;
 
     this.isReconnecting = true;
-    this.logger.warn('Desconexión detectada. Iniciando reconexión automática...');
-
     this.connecting = this.connectWithRetry();
     this.connecting
       .then((pool) => {
@@ -158,7 +155,6 @@ export class DatabaseService implements OnModuleDestroy {
   async onModuleDestroy() {
     if (this.pool) {
       await this.pool.close();
-      this.logger.log('Conexión a SQL Server cerrada');
     }
   }
 }

@@ -54,6 +54,7 @@ export class BookingService {
         blockReason: row.BlockReason ?? null,
         price: row.Price != null ? Number(row.Price) : null,
         priceSource: this.toCamelCaseValue(row.PriceSource),
+        idSpecialRate: row.ID_SpecialRate ?? null,
         specialRateReason: row.SpecialRateReason ?? null,
         dayName: row.DayName ?? null,
         dayOfWeek: row.DayOfWeek != null ? Number(row.DayOfWeek) : null,

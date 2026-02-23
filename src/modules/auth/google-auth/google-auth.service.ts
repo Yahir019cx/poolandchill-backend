@@ -76,8 +76,6 @@ export class GoogleAuthService {
   async loginWithGoogle(dto: GoogleLoginDto): Promise<GoogleLoginResponse> {
     const { idToken } = dto;
 
-    this.logger.log('Intento de login con Google');
-
     try {
       const payload = await this.validateGoogleIdToken(idToken);
 
@@ -98,8 +96,6 @@ export class GoogleAuthService {
       const refreshToken = await this.createRefreshToken(userId);
 
       this.validateAccountStatus(user.accountStatus, email);
-
-      this.logger.log(`Login Google exitoso para: ${email} (isNewUser: ${isNewUser})`);
 
       return {
         accessToken,
@@ -142,7 +138,6 @@ export class GoogleAuthService {
         audience: clientId,
       });
     } catch (err) {
-      this.logger.warn(`Validación de idToken fallida: ${err.message}`);
       throw new UnauthorizedException('Token de Google inválido o expirado');
     }
 
@@ -156,12 +151,10 @@ export class GoogleAuthService {
     const exp = payload.exp;
 
     if (iss !== GOOGLE_ISSUER) {
-      this.logger.warn(`Issuer no permitido: ${iss}`);
       throw new UnauthorizedException('Token de Google inválido');
     }
 
     if (aud !== clientId) {
-      this.logger.warn(`Audience no coincide con GOOGLE_WEB_CLIENT_ID`);
       throw new UnauthorizedException('Token de Google inválido');
     }
 
@@ -213,7 +206,6 @@ export class GoogleAuthService {
     const { UserId, IsNewUser, ErrorMessage } = result.output;
 
     if (ErrorMessage) {
-      this.logger.warn(`xsp_login_with_provider error: ${ErrorMessage}`);
       throw new UnauthorizedException(
         ErrorMessage || 'No se pudo iniciar sesión con Google',
       );

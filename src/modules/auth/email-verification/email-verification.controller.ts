@@ -108,10 +108,6 @@ export class EmailVerificationController {
       // Verificar el token y crear el usuario
       const result = await this.emailVerificationService.verifyToken(token);
 
-      this.logger.log(
-        `Verificación exitosa para usuario ${result.userId}. Tipo: ${registrationType}`,
-      );
-
       if (registrationType === 1) {
         // TIPO WEB: Generar tokens, encriptarlos y redirigir con ellos
         const tokens = await this.emailVerificationService.generateTokensForUser(
@@ -137,8 +133,6 @@ export class EmailVerificationController {
         res.redirect(redirectUrl);
       }
     } catch (error) {
-      this.logger.warn(`Error en verificación: ${error.message}`);
-
       const errorMessage = this.getErrorMessage(error);
       const encodedMessage = encodeURIComponent(errorMessage);
 

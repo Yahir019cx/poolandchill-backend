@@ -68,8 +68,6 @@ export class ForgotPasswordService {
   async forgotPassword(dto: ForgotPasswordDto): Promise<{ success: boolean; message: string }> {
     const { email } = dto;
 
-    this.logger.log(`Solicitud de recuperación de contraseña para: ${email}`);
-
     try {
       // 1. Generar token UUID
       const resetToken = uuidv4();
@@ -98,10 +96,6 @@ export class ForgotPasswordService {
 
         await this.sendResetEmail(email, result.firstName, resetUrl);
 
-        this.logger.log(`Email de recuperación enviado a: ${email}`);
-      } else {
-        // Email no existe, pero NO revelamos eso al usuario
-        this.logger.log(`Email no encontrado para reset: ${email} (respuesta genérica enviada)`);
       }
     } catch (error) {
       // Logueamos el error pero NO lo exponemos al usuario
@@ -129,21 +123,17 @@ export class ForgotPasswordService {
   async resetPassword(dto: ResetPasswordDto): Promise<{ success: boolean; message: string }> {
     const { token: encryptedToken, newPassword } = dto;
 
-    this.logger.log('Procesando restablecimiento de contraseña');
-
     // 1. Desencriptar el token
     let payload: ResetTokenPayload;
     try {
       const encryptionKey = this.configService.get<string>('ENCRYPTION_KEY', '');
       payload = decryptPayload<ResetTokenPayload>(encryptedToken, encryptionKey);
     } catch {
-      this.logger.warn('Token de reset inválido o corrupto');
       throw new BadRequestException('El enlace de recuperación es inválido. Solicita uno nuevo.');
     }
 
     // 2. Validar expiración del payload (doble validación: payload + BD)
     if (Date.now() > payload.exp) {
-      this.logger.warn(`Token de reset expirado para: ${payload.email}`);
       throw new BadRequestException('El enlace de recuperación ha expirado. Solicita uno nuevo.');
     }
 
@@ -162,8 +152,6 @@ export class ForgotPasswordService {
       this.logger.error(`Error al restablecer contraseña: ${error.message}`);
       throw new InternalServerErrorException('Error al restablecer la contraseña. Intenta nuevamente.');
     }
-
-    this.logger.log(`Contraseña restablecida exitosamente para: ${payload.email}`);
 
     return {
       success: true,

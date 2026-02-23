@@ -21,8 +21,6 @@ export class InvitationService {
   async createInvitation(dto: CreateInvitationDto) {
     const { nombre, numero, correo, invitados } = dto;
 
-    this.logger.log(`Creating invitation for: ${correo}`);
-
     try {
       const result = await this.databaseService.executeStoredProcedure(
         'xsp_InsertInvitation',
@@ -35,8 +33,6 @@ export class InvitationService {
         [],
       );
 
-      this.logger.log(`Invitation created successfully for: ${correo}`);
-
       const resolvedNombre = result?.recordset?.[0]?.Nombre || nombre;
       const resolvedCorreo = result?.recordset?.[0]?.Correo || correo;
 
@@ -47,7 +43,6 @@ export class InvitationService {
           '¡Tu asistencia fue confirmada! 🎉',
           html,
         );
-        this.logger.log(`Confirmation email sent to: ${resolvedCorreo}`);
       } catch (emailError) {
         this.logger.error(
           `Failed to send confirmation email to ${resolvedCorreo}: ${emailError.message}`,

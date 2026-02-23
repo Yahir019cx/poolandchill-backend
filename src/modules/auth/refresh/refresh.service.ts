@@ -36,8 +36,6 @@ export class RefreshService {
   async refresh(refreshDto: RefreshDto): Promise<RefreshResponse> {
     const { refreshToken } = refreshDto;
 
-    this.logger.log('Procesando solicitud de refresh token');
-
     try {
       // 1. Validar el refresh token en la base de datos
       const userData = await this.validateRefreshToken(refreshToken);
@@ -49,8 +47,6 @@ export class RefreshService {
         userData.Email,
         roles,
       );
-
-      this.logger.log(`Token refrescado exitosamente para usuario: ${userData.UserId}`);
 
       return {
         accessToken,
@@ -86,20 +82,17 @@ export class RefreshService {
 
     // Verificar si el token es válido
     if (!IsValid) {
-      this.logger.warn(`Refresh token inválido: ${ErrorMessage || 'Token no encontrado o expirado'}`);
       throw new UnauthorizedException('Refresh token inválido o expirado. Por favor, inicia sesión nuevamente.');
     }
 
     // Verificar que haya datos del usuario
     const userData = result.recordset?.[0];
     if (!userData) {
-      this.logger.warn('Refresh token válido pero sin datos de usuario');
       throw new UnauthorizedException('Refresh token inválido. Por favor, inicia sesión nuevamente.');
     }
 
     // Verificar el estado de la cuenta (1 = Active)
     if (userData.AccountStatus !== 1) {
-      this.logger.warn(`Cuenta no activa (status: ${userData.AccountStatus}) durante refresh`);
       throw new UnauthorizedException('Tu cuenta no está activa. Por favor, contacta a soporte.');
     }
 

@@ -55,18 +55,11 @@ export class HostPaymentsService {
       throw new BadRequestException(`Firma de webhook inválida: ${err?.message}`);
     }
 
-    this.logger.log(`Webhook recibido: ${event.type} (ID: ${event.id})`);
-
     // Procesar eventos de cuenta (account.updated está en tipos de Stripe; account.created se trata igual)
     const accountEventType = event.type as string;
     if (accountEventType === 'account.created' || accountEventType === 'account.updated') {
       const account = event.data.object as Stripe.Account;
-      if (accountEventType === 'account.created') {
-        this.logger.log(`Cuenta creada: ${account.id}`);
-      }
       await this.handleAccountUpdated(account);
-    } else {
-      this.logger.debug(`Evento no procesado: ${event.type}`);
     }
 
     return { received: true };
@@ -110,8 +103,6 @@ export class HostPaymentsService {
         onboardingUrl: null,
       });
 
-      this.logger.log(`Cuenta Connect creada para usuario ${userId}: ${account.id}`);
-
       return { onboardingUrl: accountLink.url };
     } catch (err: any) {
       this.logger.error(`Error al crear cuenta Connect: ${err?.message}`);
@@ -133,10 +124,6 @@ export class HostPaymentsService {
     const onboardingCompleted = chargesEnabled && payoutsEnabled;
     const accountStatus = chargesEnabled && payoutsEnabled ? 'active' : 'pending';
 
-    this.logger.log(
-      `Procesando cuenta ${stripeAccountId}: charges=${chargesEnabled}, payouts=${payoutsEnabled}, details=${detailsSubmitted}`,
-    );
-
     // Intentar obtener userId desde metadata primero (si está disponible)
     let userId: string | null | undefined = account.metadata?.userId;
 
@@ -146,14 +133,6 @@ export class HostPaymentsService {
     }
 
     if (!userId) {
-      this.logger.warn(
-        `No se encontró UserId para StripeAccountId=${stripeAccountId}. Metadata: ${JSON.stringify(account.metadata)}`,
-      );
-      // Intentar buscar por email si está disponible
-      if (account.email) {
-        this.logger.warn(`Intentando buscar por email: ${account.email}`);
-        // Nota: Podrías agregar un método para buscar por email si es necesario
-      }
       return;
     }
 
@@ -171,9 +150,6 @@ export class HostPaymentsService {
       onboardingUrl: null,
     });
 
-    this.logger.log(
-      `Cuenta actualizada en BD: ${stripeAccountId} -> UserId=${userId}, status=${accountStatus}, onboarding=${onboardingCompleted}`,
-    );
   }
 
   private async getUserIdByStripeAccountId(stripeAccountId: string): Promise<string | null> {
@@ -248,8 +224,7 @@ export class HostPaymentsService {
             accountStatus: updated.AccountStatus,
           };
         }
-      } catch (err: any) {
-        this.logger.warn(`No se pudo refrescar cuenta Stripe para ${userId}: ${err?.message}`);
+      } catch {
         // Fallback: devolver lo que tenemos en BD
       }
     }
@@ -303,7 +278,6 @@ export class HostPaymentsService {
 
     const row = result.recordset?.[0];
     if (row && row.Success !== 1) {
-      this.logger.warn(`SP ${SP_REGISTER_STRIPE_ACCOUNT}: ${row.Message}`);
       throw new InternalServerErrorException(row.Message ?? 'Error al registrar cuenta Stripe');
     }
   }

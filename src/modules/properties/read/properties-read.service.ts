@@ -118,6 +118,15 @@ export class PropertiesReadService {
         longitude: prop.Longitude ?? null,
         formattedAddress: prop.FormattedAddress ?? null,
       },
+      owner: prop.ID_Owner
+        ? {
+            displayName: prop.OwnerDisplayName ?? null,
+            bio: prop.OwnerBio ?? null,
+            profileImageUrl: prop.OwnerProfileImageUrl ?? null,
+            isIdentityVerified: Boolean(prop.OwnerIsIdentityVerified),
+            createdAt: prop.OwnerCreatedAt ?? null,
+          }
+        : null,
     };
 
     const poolRows = recordsets[1] || [];

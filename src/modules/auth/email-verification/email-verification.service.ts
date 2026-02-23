@@ -37,8 +37,6 @@ export class EmailVerificationService {
       throw new BadRequestException('Token de verificación requerido');
     }
 
-    this.logger.log(`Verificando token: ${token.substring(0, 8)}...`);
-
     try {
       const result = await this.databaseService.executeStoredProcedure<VerifyEmailTokenResult>(
         '[security].[xsp_VerifyEmailToken]',
@@ -52,8 +50,6 @@ export class EmailVerificationService {
       const { UserId: userId, ErrorMessage: errorMessage } = result.output;
 
       if (errorMessage) {
-        this.logger.warn(`Error de verificación: ${errorMessage}`);
-
         const errorLower = errorMessage.toLowerCase();
 
         if (errorLower.includes('expirado') || errorLower.includes('expired')) {
@@ -80,8 +76,6 @@ export class EmailVerificationService {
       const userData = result.recordset?.[0];
 
       if (!userData) {
-        this.logger.log(`Usuario creado exitosamente, ID: ${userId}`);
-
         return {
           success: true,
           userId: userId,
@@ -91,8 +85,6 @@ export class EmailVerificationService {
           roles: ['guest'],
         };
       }
-
-      this.logger.log(`Usuario verificado exitosamente: ${userData.email}, ID: ${userId}`);
 
       const roles = this.parseRoles(userData.roles);
 
@@ -169,8 +161,6 @@ export class EmailVerificationService {
     const accessToken = this.generateAccessToken(userId, email, roles);
     const refreshToken = await this.createRefreshToken(userId);
 
-    this.logger.log(`Tokens generados directamente para usuario: ${userId}`);
-
     return {
       accessToken,
       refreshToken,
@@ -197,8 +187,6 @@ export class EmailVerificationService {
       throw new BadRequestException('Session token requerido');
     }
 
-    this.logger.log(`Intercambiando session token: ${sessionToken.substring(0, 8)}...`);
-
     // Validar y obtener datos del session token
     const result = await this.databaseService.executeStoredProcedure(
       '[security].[xsp_ExchangeVerificationSession]',
@@ -216,8 +204,6 @@ export class EmailVerificationService {
     const { UserId, Email, Roles, ErrorMessage } = result.output;
 
     if (ErrorMessage) {
-      this.logger.warn(`Error intercambiando session: ${ErrorMessage}`);
-
       const errorLower = ErrorMessage.toLowerCase();
 
       if (errorLower.includes('expirado') || errorLower.includes('expired')) {
@@ -243,8 +229,6 @@ export class EmailVerificationService {
 
     // Generar y guardar Refresh Token
     const refreshToken = await this.createRefreshToken(UserId);
-
-    this.logger.log(`Session intercambiada exitosamente para usuario: ${UserId}`);
 
     return {
       accessToken,

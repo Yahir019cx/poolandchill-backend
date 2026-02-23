@@ -110,8 +110,6 @@ export class UsersService {
    * @throws NotFoundException si el usuario no existe
    */
   async getMyProfile(userId: string): Promise<UserProfile> {
-    this.logger.log(`Obteniendo perfil para usuario: ${userId}`);
-
     try {
       const result = await this.databaseService.executeStoredProcedure(
         '[security].[xsp_get_user_profile]',
@@ -122,8 +120,6 @@ export class UsersService {
       const { ErrorMessage: errorMessage } = result.output;
 
       if (errorMessage) {
-        this.logger.warn(`Error al obtener perfil: ${errorMessage}`);
-
         if (
           errorMessage.toLowerCase().includes('no encontrado') ||
           errorMessage.toLowerCase().includes('not found')
@@ -177,8 +173,6 @@ export class UsersService {
         isStaff: Boolean(userData.IsStaff),
       };
 
-      this.logger.log(`Perfil obtenido exitosamente para: ${userData.Email}`);
-
       return profile;
     } catch (error) {
       this.logger.error(`Error al obtener perfil: ${error.message}`);
@@ -226,8 +220,6 @@ export class UsersService {
       );
     }
 
-    this.logger.log(`Actualizando perfil para usuario: ${userId}`);
-
     // Formatear phoneNumber: agregar +52 si solo vienen 10 dígitos
     let formattedPhone: string | null = null;
     if (dto.phoneNumber) {
@@ -272,8 +264,6 @@ export class UsersService {
       const { ErrorMessage: errorMessage } = result.output;
 
       if (errorMessage) {
-        this.logger.warn(`Error al actualizar perfil: ${errorMessage}`);
-
         // El SP valida que el displayName contenga partes del nombre real
         if (
           errorMessage.toLowerCase().includes('nombre') ||
@@ -326,10 +316,6 @@ export class UsersService {
         message: updatedData.Message || 'Perfil actualizado exitosamente',
       };
 
-      this.logger.log(
-        `Perfil actualizado exitosamente para: ${updatedData.Email}`,
-      );
-
       return updatedProfile;
     } catch (error) {
       this.logger.error(`Error al actualizar perfil: ${error.message}`);
@@ -360,8 +346,6 @@ export class UsersService {
     userId: string,
     imageUrl: string,
   ): Promise<ImageUpdateResponse> {
-    this.logger.log(`Actualizando imagen de perfil para usuario: ${userId}`);
-
     try {
       const result = await this.databaseService.executeStoredProcedure(
         '[security].[xsp_update_user_profile]',
@@ -379,7 +363,6 @@ export class UsersService {
       const { ErrorMessage: errorMessage } = result.output;
 
       if (errorMessage) {
-        this.logger.warn(`Error al actualizar imagen: ${errorMessage}`);
         throw new BadRequestException(errorMessage);
       }
 
@@ -388,10 +371,6 @@ export class UsersService {
       if (!updatedData) {
         throw new InternalServerErrorException('Error al actualizar la imagen');
       }
-
-      this.logger.log(
-        `Imagen de perfil actualizada para: ${updatedData.Email}`,
-      );
 
       return {
         userId: updatedData.UserId,
@@ -426,8 +405,6 @@ export class UsersService {
    * @returns Perfil con imagen eliminada
    */
   async deleteProfileImage(userId: string): Promise<ImageUpdateResponse> {
-    this.logger.log(`Eliminando imagen de perfil para usuario: ${userId}`);
-
     try {
       const result = await this.databaseService.executeStoredProcedure(
         '[security].[xsp_delete_profile_image]',
@@ -438,7 +415,6 @@ export class UsersService {
       const { ErrorMessage: errorMessage } = result.output;
 
       if (errorMessage) {
-        this.logger.warn(`Error al eliminar imagen: ${errorMessage}`);
         throw new BadRequestException(errorMessage);
       }
 
@@ -447,8 +423,6 @@ export class UsersService {
       if (!updatedData) {
         throw new InternalServerErrorException('Error al eliminar la imagen');
       }
-
-      this.logger.log(`Imagen de perfil eliminada para usuario: ${userId}`);
 
       return {
         userId: updatedData.UserId,
@@ -485,8 +459,6 @@ export class UsersService {
   async completeHostOnboarding(
     userId: string,
   ): Promise<HostOnboardingResponse> {
-    this.logger.log(`Completando onboarding de host para usuario: ${userId}`);
-
     try {
       const result = await this.databaseService.executeStoredProcedure(
         '[security].[xsp_complete_host_onboarding]',
@@ -497,8 +469,6 @@ export class UsersService {
       const { ErrorMessage: errorMessage } = result.output;
 
       if (errorMessage) {
-        this.logger.warn(`Error al completar onboarding: ${errorMessage}`);
-
         if (
           errorMessage.toLowerCase().includes('no encontrado') ||
           errorMessage.toLowerCase().includes('not found')
@@ -514,10 +484,6 @@ export class UsersService {
       if (!userData) {
         throw new BadRequestException('No se pudo completar el onboarding');
       }
-
-      this.logger.log(
-        `Onboarding completado exitosamente para usuario: ${userId}`,
-      );
 
       return {
         success: true,

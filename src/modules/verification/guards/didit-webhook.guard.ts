@@ -22,7 +22,6 @@ export class DiditWebhookGuard implements CanActivate {
     const timestamp = request.headers['x-timestamp'];
 
     if ((!signatureV2 && !signatureSimple) || !timestamp) {
-      this.logger.warn('Webhook sin firma o timestamp');
       throw new UnauthorizedException('Firma de webhook requerida');
     }
 
@@ -38,7 +37,6 @@ export class DiditWebhookGuard implements CanActivate {
     const incomingTime = parseInt(timestamp, 10);
 
     if (Math.abs(currentTime - incomingTime) > 300) {
-      this.logger.warn(`Webhook con timestamp fuera de rango: ${timestamp}`);
       throw new UnauthorizedException('Webhook expirado');
     }
 
@@ -48,9 +46,7 @@ export class DiditWebhookGuard implements CanActivate {
         if (this.verifySignatureV2(request.body, signatureV2, webhookSecret)) {
           return true;
         }
-        this.logger.warn('Firma V2 no coincide');
-      } catch (error) {
-        this.logger.warn(`Error verificando firma V2: ${error.message}`);
+      } catch {
       }
     }
 
@@ -60,13 +56,10 @@ export class DiditWebhookGuard implements CanActivate {
         if (this.verifySignatureSimple(request.body, signatureSimple, webhookSecret)) {
           return true;
         }
-        this.logger.warn('Firma Simple no coincide');
-      } catch (error) {
-        this.logger.warn(`Error verificando firma Simple: ${error.message}`);
+      } catch {
       }
     }
 
-    this.logger.warn('Firma de webhook inválida');
     throw new UnauthorizedException('Firma de webhook inválida');
   }
 

@@ -51,8 +51,6 @@ export class LoginService {
   async login(loginDto: LoginDto): Promise<LoginResponse> {
     const { email, password } = loginDto;
 
-    this.logger.log(`Intento de login para: ${email}`);
-
     try {
       // 1. Obtener el hash almacenado de la BD
       const storedHash = await this.getStoredPasswordHash(email);
@@ -82,8 +80,6 @@ export class LoginService {
 
       // 6. Preparar respuesta
       const userResponse = this.mapUserData(userData, roles);
-
-      this.logger.log(`Login exitoso para: ${email}`);
 
       return {
         accessToken,
@@ -151,7 +147,6 @@ export class LoginService {
         ? Math.ceil((lockedUntilDate.getTime() - Date.now()) / 60000)
         : 15;
 
-      this.logger.warn(`Cuenta bloqueada para: ${email}`);
       throw new UnauthorizedException(
         `Cuenta bloqueada por múltiples intentos fallidos. Intenta nuevamente en ${minutesRemaining} minutos.`,
       );
@@ -159,8 +154,6 @@ export class LoginService {
 
     // Verificar si hubo error (credenciales incorrectas, etc.)
     if (ErrorMessage) {
-      this.logger.warn(`Error de login para ${email}: ${ErrorMessage}`);
-      // Mensaje genérico para no revelar si el email existe
       throw new UnauthorizedException('Email o contraseña incorrectos');
     }
 
@@ -186,22 +179,18 @@ export class LoginService {
         // Cuenta activa - OK
         return;
       case 2:
-        this.logger.warn(`Cuenta suspendida: ${email}`);
         throw new ForbiddenException(
           'Tu cuenta ha sido suspendida. Contacta a soporte para más información.',
         );
       case 3:
-        this.logger.warn(`Cuenta eliminada: ${email}`);
         throw new ForbiddenException(
           'Esta cuenta ha sido eliminada.',
         );
       case 4:
-        this.logger.warn(`Cuenta baneada: ${email}`);
         throw new ForbiddenException(
           'Tu cuenta ha sido baneada permanentemente.',
         );
       default:
-        this.logger.warn(`Estado de cuenta desconocido (${status}): ${email}`);
         throw new ForbiddenException(
           'Estado de cuenta no válido. Contacta a soporte.',
         );

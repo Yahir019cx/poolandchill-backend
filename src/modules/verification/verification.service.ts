@@ -28,8 +28,6 @@ export class VerificationService {
    * Inicia una sesión de verificación en Didit
    */
   async startVerification(userId: string) {
-    this.logger.log(`Iniciando verificación para usuario: ${userId}`);
-
     const apiKey = this.configService.get<string>('DIDIT_API_KEY');
     const workflowId = this.configService.get<string>('DIDIT_WORKFLOW_ID');
     const callbackUrl = this.configService.get<string>('DIDIT_CALLBACK_URL');
@@ -102,8 +100,6 @@ export class VerificationService {
         diditResponse.url,
       );
 
-      this.logger.log(`Sesión de verificación creada: ${diditResponse.session_id}`);
-
       return {
         success: true,
         message: 'Sesión de verificación creada',
@@ -125,8 +121,6 @@ export class VerificationService {
    * Procesa el webhook de Didit
    */
   async processWebhook(payload: DiditWebhookDto) {
-    this.logger.log(`Webhook recibido - Session: ${payload.session_id}, Status: ${payload.status}`);
-
     const { session_id, status, vendor_data, decision } = payload;
 
     // Determinar si está verificado
@@ -134,8 +128,6 @@ export class VerificationService {
     const isDeclined = status === 'Declined';
 
     if (!isVerified && !isDeclined) {
-      // Estados intermedios (In Progress, In Review, etc.) - solo log (igual que en web)
-      this.logger.log(`Estado intermedio recibido: ${status}`);
       return { success: true, message: 'Webhook procesado (estado intermedio)' };
     }
 
@@ -165,8 +157,6 @@ export class VerificationService {
         this.logger.error(`Error actualizando verificación: ${ResultMessage}`);
         throw new BadRequestException(ResultMessage);
       }
-
-      this.logger.log(`Verificación actualizada - Session: ${session_id}, Verified: ${isVerified}`);
 
       return {
         success: true,
@@ -199,7 +189,6 @@ export class VerificationService {
     const fiveMinutes = 5 * 60 * 1000;
 
     if (Math.abs(now - timestampMs) > fiveMinutes) {
-      this.logger.warn('Webhook con timestamp fuera de rango');
       return false;
     }
 
@@ -255,8 +244,6 @@ export class VerificationService {
       'Verifica tu usuario para aceptar tu propiedad - Pool & Chill',
       html,
     );
-
-    this.logger.log(`Email de verificación enviado a ${email} (userId: ${userId})`);
 
     return {
       success: true,

@@ -108,9 +108,6 @@ export class AdminService {
           'Tu propiedad ha sido aprobada - Pool & Chill',
           html,
         )
-        .then(() =>
-          this.logger.log(`Email de aprobación enviado a ${ownerData.Email}`),
-        )
         .catch((err) =>
           this.logger.error(
             `Error enviando email de aprobación: ${err.message}`,
@@ -163,9 +160,6 @@ export class AdminService {
           ownerData.Email,
           'Actualización sobre tu propiedad - Pool & Chill',
           html,
-        )
-        .then(() =>
-          this.logger.log(`Email de rechazo enviado a ${ownerData.Email}`),
         )
         .catch((err) =>
           this.logger.error(`Error enviando email de rechazo: ${err.message}`),

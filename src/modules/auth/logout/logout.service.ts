@@ -22,8 +22,6 @@ export class LogoutService {
    * Revoca todos los Refresh Tokens asociados al usuario
    */
   async logout(userId: string): Promise<LogoutResponse> {
-    this.logger.log(`Procesando logout para usuario: ${userId}`);
-
     try {
       const result = await this.databaseService.executeStoredProcedure(
         '[security].[xsp_RevokeRefreshTokens]',
@@ -44,8 +42,6 @@ export class LogoutService {
         throw new InternalServerErrorException('Error al cerrar sesión. Intenta nuevamente.');
       }
 
-      this.logger.log(`Logout exitoso para usuario ${userId}. Tokens revocados: ${RevokedCount || 0}`);
-
       return {
         success: true,
         message: 'Sesión cerrada exitosamente',
@@ -64,8 +60,6 @@ export class LogoutService {
    * Revoca un Refresh Token específico (logout de un solo dispositivo)
    */
   async logoutSingle(userId: string, refreshToken: string): Promise<LogoutResponse> {
-    this.logger.log(`Procesando logout parcial para usuario: ${userId}`);
-
     try {
       const result = await this.databaseService.executeStoredProcedure(
         '[security].[xsp_RevokeRefreshTokens]',
@@ -85,8 +79,6 @@ export class LogoutService {
         this.logger.error(`Error al revocar token específico: ${ErrorMessage}`);
         throw new InternalServerErrorException('Error al cerrar sesión. Intenta nuevamente.');
       }
-
-      this.logger.log(`Logout parcial exitoso. Tokens revocados: ${RevokedCount || 0}`);
 
       return {
         success: true,

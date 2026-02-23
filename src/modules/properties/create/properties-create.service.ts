@@ -31,8 +31,6 @@ export class PropertiesCreateService {
   }
 
   async createProperty(userId: string, dto: CreatePropertyDto) {
-    this.logger.log(`Creando propiedad para usuario: ${userId}`);
-
     if (!dto.services.hasPool && !dto.services.hasCabin && !dto.services.hasCamping) {
       throw new BadRequestException('Debe seleccionar al menos un servicio (pool, cabin o camping)');
     }
@@ -56,18 +54,11 @@ export class PropertiesCreateService {
       await this.executeSaveImages(propertyId, userId, dto);
       await this.executeSubmitForReview(propertyId, userId);
 
-      this.logger.log(`Propiedad ${propertyId} creada y enviada a revisión`);
-
       this.getUserEmail(userId).then((email) => {
-        if (!email) {
-          this.logger.warn(`No se envió email de revisión: no se encontró email para usuario ${userId}`);
-          return;
-        }
-        this.logger.log(`Enviando email de revisión a: ${email}`);
+        if (!email) return;
         const html = propertyInReviewTemplate(dto.basicInfo.propertyName);
         this.zohoMailService
           .sendMail(email, 'Tu propiedad está en revisión - Pool & Chill', html)
-          .then(() => this.logger.log(`Email de revisión enviado a ${email}`))
           .catch((err) => this.logger.error(`Error enviando email de revisión: ${err.message}`));
       }).catch((err) => this.logger.error(`Error obteniendo email del usuario: ${err.message}`));
 
