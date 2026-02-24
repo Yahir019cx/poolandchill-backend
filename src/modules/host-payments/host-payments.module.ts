@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { HostPaymentsController } from './host-payments.controller';
 import { HostPaymentsService } from './host-payments.service';
+import { BookingModule } from '../booking/booking.module';
 
 /**
  * Módulo Host Payments (Stripe Connect Express).
@@ -16,7 +17,7 @@ import { HostPaymentsService } from './host-payments.service';
  * SP en BD: [payment].[xsp_RegisterStripeAccount]
  */
 @Module({
-  imports: [ConfigModule],
+  imports: [ConfigModule, BookingModule],
   controllers: [HostPaymentsController],
   providers: [HostPaymentsService],
   exports: [HostPaymentsService],

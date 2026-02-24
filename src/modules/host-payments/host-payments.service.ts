@@ -8,6 +8,7 @@ import { ConfigService } from '@nestjs/config';
 import Stripe from 'stripe';
 import * as sql from 'mssql';
 import { DatabaseService } from '../../config/database.config';
+import { BookingService } from '../booking/booking.service';
 
 const SP_REGISTER_STRIPE_ACCOUNT = '[payment].[xsp_RegisterStripeAccount]';
 const SP_GET_STRIPE_ACCOUNT_BY_USER_ID = '[payment].[xsp_GetStripeAccountByUserId]';
@@ -20,6 +21,7 @@ export class HostPaymentsService {
   constructor(
     private readonly configService: ConfigService,
     private readonly databaseService: DatabaseService,
+    private readonly bookingService: BookingService,
   ) {}
 
   getStripe(): Stripe {
@@ -38,26 +40,55 @@ export class HostPaymentsService {
    * Lanza BadRequestException si la firma es inválida.
    */
   async processWebhook(rawBody: Buffer | string, signature: string): Promise<{ received: boolean }> {
-    const webhookSecret = this.configService.get<string>('STRIPE_WEBHOOK_SECRET');
-    if (!webhookSecret) {
-      throw new InternalServerErrorException('STRIPE_WEBHOOK_SECRET no configurada');
+    const secrets = [
+      this.configService.get<string>('STRIPE_WEBHOOK_SECRET'),
+      this.configService.get<string>('STRIPE_PAYMENT_WEBHOOK_SECRET'),
+    ].filter(Boolean) as string[];
+
+    if (secrets.length === 0) {
+      throw new InternalServerErrorException('Ningún webhook secret de Stripe configurado');
     }
 
-    let event: Stripe.Event;
-    try {
-      event = this.getStripe().webhooks.constructEvent(
-        rawBody,
-        signature,
-        webhookSecret,
-      ) as Stripe.Event;
-    } catch (err: any) {
-      this.logger.error(`Error verificando firma del webhook: ${err?.message}`);
-      throw new BadRequestException(`Firma de webhook inválida: ${err?.message}`);
+    let event: Stripe.Event | null = null;
+    for (const secret of secrets) {
+      try {
+        event = this.getStripe().webhooks.constructEvent(
+          rawBody,
+          signature,
+          secret,
+        ) as Stripe.Event;
+        break;
+      } catch {
+        // Intentar con el siguiente secret
+      }
     }
 
-    // Procesar eventos de cuenta (account.updated está en tipos de Stripe; account.created se trata igual)
-    const accountEventType = event.type as string;
-    if (accountEventType === 'account.created' || accountEventType === 'account.updated') {
+    if (!event) {
+      throw new BadRequestException('Firma de webhook inválida');
+    }
+
+    const eventType = event.type as string;
+
+    if (eventType === 'payment_intent.succeeded') {
+      const pi = event.data.object as Stripe.PaymentIntent;
+      const bookingId = pi.metadata?.bookingId;
+
+      if (bookingId) {
+        await this.bookingService.confirmPaymentFromStripe(bookingId, {
+          paymentIntentId: pi.id,
+          chargeId: typeof pi.latest_charge === 'string' ? pi.latest_charge : pi.latest_charge?.id ?? null,
+          amount: pi.amount / 100,
+          currency: pi.currency?.toUpperCase() ?? 'MXN',
+          paymentStatus: pi.status,
+          paymentMethod: typeof pi.payment_method === 'string' ? pi.payment_method : pi.payment_method?.id ?? null,
+          clientSecret: pi.client_secret ?? null,
+        });
+      } else {
+        this.logger.warn(`payment_intent.succeeded sin bookingId en metadata: ${pi.id}`);
+      }
+    }
+
+    if (eventType === 'account.created' || eventType === 'account.updated') {
       const account = event.data.object as Stripe.Account;
       await this.handleAccountUpdated(account);
     }

@@ -1,16 +1,13 @@
 import { Module } from '@nestjs/common';
 import { BookingController } from './booking.controller';
 import { BookingService } from './booking.service';
+import { BookingEmailService } from './booking-email.service';
+import { EmailModule } from '../../web/email/email.module';
 
-/**
- * Módulo de booking / reservaciones
- *
- * Endpoints públicos (sin autenticación):
- * - POST /booking/calendar - Calendario de disponibilidad y precios
- */
 @Module({
+  imports: [EmailModule],
   controllers: [BookingController],
-  providers: [BookingService],
-  exports: [BookingService],
+  providers: [BookingService, BookingEmailService],
+  exports: [BookingService, BookingEmailService],
 })
 export class BookingModule {}

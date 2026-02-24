@@ -5,3 +5,5 @@ export { propertyInReviewTemplate } from './property-in-review.template';
 export { forgotPasswordTemplate } from './forgot-password.template';
 export { hostVerificationEmailTemplate } from './host-verification-email.template';
 export { invitationConfirmedTemplate } from './invitation-confirmed.template';
+export { bookingConfirmedTemplate } from './booking-confirmed.template';
+export type { BookingConfirmedTemplateParams } from './booking-confirmed.template';
