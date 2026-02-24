@@ -107,4 +107,15 @@ export class BookingService {
       expiry: Date.now() + this.CACHE_TTL_MS,
     });
   }
+
+  /**
+   * Invalida la caché del calendario para una propiedad.
+   * Debe llamarse después de mutaciones en date-blocks o special-rate.
+   */
+  invalidateCalendarCache(propertyId: string): void {
+    const cacheKey = `calendar:${propertyId}`;
+    if (this.cache.delete(cacheKey)) {
+      this.logger.debug(`Calendar cache invalidated for property ${propertyId}`);
+    }
+  }
 }

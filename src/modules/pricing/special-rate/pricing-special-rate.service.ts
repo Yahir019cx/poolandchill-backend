@@ -1,11 +1,16 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import * as sql from 'mssql';
 import { DatabaseService } from '../../../config/database.config';
+import { BookingService } from '../../booking/booking.service';
 import { CreateSpecialRateDto } from '../dto';
+import { DeactivateSpecialRateDto } from '../dto/deactivate-special-rate.dto';
 
 @Injectable()
 export class PricingSpecialRateService {
-  constructor(private readonly databaseService: DatabaseService) {}
+  constructor(
+    private readonly databaseService: DatabaseService,
+    private readonly bookingService: BookingService,
+  ) {}
 
   /**
    * Crea una tarifa especial para una propiedad (pool, cabin o camping).
@@ -39,6 +44,8 @@ export class PricingSpecialRateService {
       throw new BadRequestException(message);
     }
 
+    this.bookingService.invalidateCalendarCache(dto.idProperty);
+
     return {
       success: true,
       data: {
@@ -54,12 +61,13 @@ export class PricingSpecialRateService {
 
   /**
    * Desactiva una tarifa especial. Solo el propietario de la propiedad puede desactivar.
+   * Si dto.propertyId viene (o el SP devuelve ID_Property), se invalida la caché del calendario.
    */
-  async deactivateSpecialRate(userId: string, idSpecialRate: string) {
+  async deactivateSpecialRate(userId: string, dto: DeactivateSpecialRateDto) {
     const result = await this.databaseService.executeStoredProcedure(
       '[pricing].[xsp_DeactivateSpecialRate]',
       [
-        { name: 'ID_SpecialRate', type: sql.UniqueIdentifier, value: idSpecialRate },
+        { name: 'ID_SpecialRate', type: sql.UniqueIdentifier, value: dto.idSpecialRate },
         { name: 'DeactivatedBy', type: sql.UniqueIdentifier, value: userId },
       ],
       [],
@@ -75,6 +83,11 @@ export class PricingSpecialRateService {
 
     if (!success) {
       throw new BadRequestException(message);
+    }
+
+    const propertyId = dto.propertyId ?? row.ID_Property;
+    if (propertyId) {
+      this.bookingService.invalidateCalendarCache(propertyId);
     }
 
     return {

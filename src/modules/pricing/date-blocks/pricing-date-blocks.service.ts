@@ -1,6 +1,7 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import * as sql from 'mssql';
 import { DatabaseService } from '../../../config/database.config';
+import { BookingService } from '../../booking/booking.service';
 import {
   CreateOwnerDateBlockDto,
   DeleteOwnerDateBlockDto,
@@ -8,7 +9,10 @@ import {
 
 @Injectable()
 export class PricingDateBlocksService {
-  constructor(private readonly databaseService: DatabaseService) {}
+  constructor(
+    private readonly databaseService: DatabaseService,
+    private readonly bookingService: BookingService,
+  ) {}
 
   /**
    * Crea bloqueos de fechas por el propietario (mantenimiento, uso personal, etc.).
@@ -40,6 +44,8 @@ export class PricingDateBlocksService {
     if (!success) {
       throw new BadRequestException(message);
     }
+
+    this.bookingService.invalidateCalendarCache(dto.idProperty);
 
     return {
       success: true,
@@ -81,6 +87,8 @@ export class PricingDateBlocksService {
     if (!success) {
       throw new BadRequestException(message);
     }
+
+    this.bookingService.invalidateCalendarCache(dto.idProperty);
 
     const datesUnblocked = row.DatesUnblocked != null ? Number(row.DatesUnblocked) : 0;
 

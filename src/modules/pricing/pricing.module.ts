@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module';
+import { BookingModule } from '../booking/booking.module';
 import {
   PricingSpecialRateController,
   PricingSpecialRateService,
@@ -16,7 +17,7 @@ import {
  * - date-blocks: POST /pricing/date-blocks (crear bloqueo), DELETE /pricing/date-blocks (eliminar bloqueos)
  */
 @Module({
-  imports: [AuthModule],
+  imports: [AuthModule, BookingModule],
   controllers: [PricingSpecialRateController, PricingDateBlocksController],
   providers: [PricingSpecialRateService, PricingDateBlocksService],
   exports: [PricingSpecialRateService, PricingDateBlocksService],

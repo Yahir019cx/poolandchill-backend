@@ -1,5 +1,5 @@
-import { IsUUID } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { IsOptional, IsUUID } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class DeactivateSpecialRateDto {
   @ApiProperty({
@@ -8,4 +8,12 @@ export class DeactivateSpecialRateDto {
   })
   @IsUUID('4')
   idSpecialRate: string;
+
+  @ApiPropertyOptional({
+    description: 'ID de la propiedad (recomendado para invalidar caché del calendario tras desactivar)',
+    example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+  })
+  @IsOptional()
+  @IsUUID('4')
+  propertyId?: string;
 }

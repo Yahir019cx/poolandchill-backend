@@ -93,6 +93,6 @@ export class PricingSpecialRateController {
   @ApiResponse({ status: 401, description: 'No autenticado' })
   async deactivate(@Request() req: any, @Body() dto: DeactivateSpecialRateDto) {
     const userId = req.user.userId;
-    return this.specialRateService.deactivateSpecialRate(userId, dto.idSpecialRate);
+    return this.specialRateService.deactivateSpecialRate(userId, dto);
   }
 }
