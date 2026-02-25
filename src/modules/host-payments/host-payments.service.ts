@@ -84,7 +84,8 @@ export class HostPaymentsService {
 
     if (eventType === 'payment_intent.succeeded') {
       const pi = event.data.object as Stripe.PaymentIntent;
-      const bookingId = pi.metadata?.bookingId;
+      const bookingIdRaw = pi.metadata?.bookingId;
+      const bookingId = typeof bookingIdRaw === 'string' ? bookingIdRaw.trim() : undefined;
 
       this.logger.log(`[WEBHOOK] payment_intent.succeeded — PI: ${pi.id}, amount: ${pi.amount}, metadata: ${JSON.stringify(pi.metadata)}`);
 

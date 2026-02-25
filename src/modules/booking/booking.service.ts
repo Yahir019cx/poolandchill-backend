@@ -236,7 +236,9 @@ export class BookingService {
     // 2. Confirmar la reserva, generar QR y obtener datos para email
     let spRow: any;
     try {
-      this.logger.log(`[CONFIRM] Paso 2: Ejecutando ${SP_CONFIRM_PAYMENT}...`);
+      this.logger.log(
+        `[CONFIRM] Paso 2: Ejecutando ${SP_CONFIRM_PAYMENT} con ID_Booking=${bookingId}, StripePaymentIntentId=${payment.paymentIntentId}`,
+      );
       const result = await this.databaseService.executeStoredProcedure<any>(
         SP_CONFIRM_PAYMENT,
         [
@@ -246,7 +248,7 @@ export class BookingService {
         [],
       );
       spRow = result.recordset?.[0];
-      this.logger.log(`[CONFIRM] Paso 2 resultado: ${JSON.stringify(spRow)}`);
+      this.logger.log(`[CONFIRM] Paso 2 resultado: Success=${spRow?.Success}, Message=${spRow?.Message}, full: ${JSON.stringify(spRow)}`);
     } catch (error) {
       this.logger.error(
         `[CONFIRM] ERROR en Paso 2 (${SP_CONFIRM_PAYMENT}) para booking ${bookingId}: ${error.message}`,
@@ -256,7 +258,7 @@ export class BookingService {
 
     if (!spRow || spRow.Success !== 1) {
       this.logger.warn(
-        `[CONFIRM] SP rechazó booking ${bookingId}: ${spRow?.Message}`,
+        `[CONFIRM] RECHAZADO POR SP — bookingId: ${bookingId}, Success: ${spRow?.Success}, Message: ${spRow?.Message ?? 'sin mensaje'}, spRow: ${JSON.stringify(spRow)}`,
       );
       return;
     }
