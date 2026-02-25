@@ -97,6 +97,37 @@ export class HostPaymentsController {
     return this.hostPaymentsService.getAccountStatus(userId, { refreshFromStripe: true });
   }
 
+  @Post('process-payouts')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Procesar payouts pendientes (admin)',
+    description: `
+      Busca payouts programados cuya fecha ya pasó y los procesa:
+      1. Marca como 'processing' en BD
+      2. Crea un Transfer en Stripe hacia la cuenta Connect del host
+      3. Actualiza a 'completed' o 'failed' según resultado
+
+      También se ejecuta automáticamente cada hora vía cron.
+    `,
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Resultado del procesamiento',
+    schema: {
+      type: 'object',
+      properties: {
+        processed: { type: 'number', example: 3 },
+        failed: { type: 'number', example: 0 },
+      },
+    },
+  })
+  @ApiResponse({ status: 401, description: 'No autenticado' })
+  async processPayouts() {
+    return this.hostPaymentsService.processPendingPayouts();
+  }
+
   @Post('webhook')
   @HttpCode(HttpStatus.OK)
   @ApiExcludeEndpoint()

@@ -1,3 +1,7 @@
 export * from './get-calendar.dto';
 export * from './create-booking.dto';
 export * from './check-availability.dto';
+export * from './check-in.dto';
+export * from './check-out.dto';
+export * from './calculate-refund.dto';
+export * from './cancel-booking.dto';

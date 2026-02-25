@@ -12,12 +12,20 @@ import { DatabaseService } from '../../config/database.config';
 import { GetCalendarDto } from './dto/get-calendar.dto';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { CheckAvailabilityDto } from './dto/check-availability.dto';
+import { CheckInDto } from './dto/check-in.dto';
+import { CheckOutDto } from './dto/check-out.dto';
+import { CalculateRefundDto } from './dto/calculate-refund.dto';
+import { CancelBookingDto } from './dto/cancel-booking.dto';
 import { BookingEmailService } from './booking-email.service';
 
 const SP_CHECK_AVAILABILITY = '[booking].[xsp_CheckAvailability]';
 const SP_CREATE_BOOKING    = '[booking].[xsp_CreateBooking]';
 const SP_CONFIRM_PAYMENT   = '[booking].[xsp_ConfirmPayment]';
 const SP_RECORD_PAYMENT    = '[payment].[xsp_RecordPayment]';
+const SP_CHECK_IN          = '[booking].[xsp_CheckIn]';
+const SP_CHECK_OUT         = '[booking].[xsp_CheckOut]';
+const SP_CALCULATE_REFUND  = '[booking].[xsp_CalculateRefund]';
+const SP_CANCEL_BOOKING    = '[booking].[xsp_CancelBooking]';
 
 export interface StripePaymentData {
   paymentIntentId: string;
@@ -184,8 +192,11 @@ export class BookingService {
     bookingId: string,
     payment: StripePaymentData,
   ): Promise<void> {
+    this.logger.log(`[CONFIRM] Iniciando para booking ${bookingId} — PI: ${payment.paymentIntentId}`);
+
     // 1. Registrar el pago en StripePayments
     try {
+      this.logger.log(`[CONFIRM] Paso 1: Ejecutando ${SP_RECORD_PAYMENT}...`);
       const recordResult = await this.databaseService.executeStoredProcedure<any>(
         SP_RECORD_PAYMENT,
         [
@@ -201,6 +212,7 @@ export class BookingService {
         [],
       );
       const recordRow = recordResult.recordset?.[0];
+      this.logger.log(`[CONFIRM] Paso 1 resultado: ${JSON.stringify(recordRow)}`);
       if (!recordRow || recordRow.Success !== 1) {
         this.logger.warn(
           `${SP_RECORD_PAYMENT} falló para booking ${bookingId}: ${recordRow?.Message}`,
@@ -208,13 +220,14 @@ export class BookingService {
       }
     } catch (error) {
       this.logger.error(
-        `Error ejecutando ${SP_RECORD_PAYMENT} para booking ${bookingId}: ${error.message}`,
+        `[CONFIRM] ERROR en Paso 1 (${SP_RECORD_PAYMENT}) para booking ${bookingId}: ${error.message}`,
       );
     }
 
     // 2. Confirmar la reserva, generar QR y obtener datos para email
     let spRow: any;
     try {
+      this.logger.log(`[CONFIRM] Paso 2: Ejecutando ${SP_CONFIRM_PAYMENT}...`);
       const result = await this.databaseService.executeStoredProcedure<any>(
         SP_CONFIRM_PAYMENT,
         [
@@ -224,26 +237,28 @@ export class BookingService {
         [],
       );
       spRow = result.recordset?.[0];
+      this.logger.log(`[CONFIRM] Paso 2 resultado: ${JSON.stringify(spRow)}`);
     } catch (error) {
       this.logger.error(
-        `Error ejecutando ${SP_CONFIRM_PAYMENT} para booking ${bookingId}: ${error.message}`,
+        `[CONFIRM] ERROR en Paso 2 (${SP_CONFIRM_PAYMENT}) para booking ${bookingId}: ${error.message}`,
       );
       throw error;
     }
 
     if (!spRow || spRow.Success !== 1) {
       this.logger.warn(
-        `${SP_CONFIRM_PAYMENT} rechazó booking ${bookingId}: ${spRow?.Message}`,
+        `[CONFIRM] SP rechazó booking ${bookingId}: ${spRow?.Message}`,
       );
       return;
     }
 
     if (spRow.Message === 'Reserva ya estaba confirmada') {
-      this.logger.log(`Booking ${bookingId} ya estaba confirmado — email omitido`);
+      this.logger.log(`[CONFIRM] Booking ${bookingId} ya estaba confirmado — email omitido`);
       return;
     }
 
     // 3. Enviar email con los datos que devolvió el SP
+    this.logger.log(`[CONFIRM] Paso 3: Enviando email a ${spRow.GuestEmail}...`);
     try {
       await this.bookingEmailService.sendBookingConfirmedEmail({
         guestEmail: spRow.GuestEmail,
@@ -260,11 +275,216 @@ export class BookingService {
         totalIVA: Number(spRow.TotalIVA),
         totalGuestPayment: Number(spRow.TotalGuestPayment),
       });
+      this.logger.log(`[CONFIRM] Paso 3 completado — email enviado a ${spRow.GuestEmail}`);
     } catch (emailErr) {
       this.logger.error(
-        `Email de confirmación falló para booking ${bookingId}: ${emailErr.message}`,
+        `[CONFIRM] ERROR en Paso 3 (email) para booking ${bookingId}: ${emailErr.message}`,
       );
     }
+
+    this.logger.log(`[CONFIRM] Flujo completo OK para booking ${bookingId}`);
+  }
+
+  // ─────────────────────────────────────────────
+  // CHECK-IN (Host escanea QR)
+  // ─────────────────────────────────────────────
+
+  async checkIn(dto: CheckInDto, hostId: string) {
+    try {
+      const result = await this.databaseService.executeStoredProcedure<any>(
+        SP_CHECK_IN,
+        [
+          { name: 'BookingCode', type: sql.VarChar(30), value: dto.bookingCode },
+          { name: 'ID_Booking', type: sql.UniqueIdentifier, value: dto.bookingId },
+          { name: 'QRHash', type: sql.VarChar(64), value: dto.qrHash },
+          { name: 'ID_Host', type: sql.UniqueIdentifier, value: hostId },
+        ],
+        [],
+      );
+
+      const row = result.recordset?.[0];
+      if (!row) {
+        throw new InternalServerErrorException('Respuesta inesperada del servidor');
+      }
+
+      if (row.Success !== 1) {
+        throw new BadRequestException(row.Message ?? 'No se pudo realizar el check-in');
+      }
+
+      return {
+        success: true,
+        data: {
+          bookingCode: row.BookingCode,
+          checkInDate: row.CheckInDate,
+          checkInAt: row.CheckInAt,
+          message: row.Message,
+        },
+      };
+    } catch (error) {
+      if (error instanceof BadRequestException) throw error;
+      if (error instanceof InternalServerErrorException) throw error;
+      this.logger.error(`Error en ${SP_CHECK_IN}: ${error.message}`);
+      throw new InternalServerErrorException('Error al procesar el check-in');
+    }
+  }
+
+  // ─────────────────────────────────────────────
+  // CHECK-OUT (Host cierra renta)
+  // ─────────────────────────────────────────────
+
+  async checkOut(dto: CheckOutDto, hostId: string) {
+    try {
+      const result = await this.databaseService.executeStoredProcedure<any>(
+        SP_CHECK_OUT,
+        [
+          { name: 'ID_Booking', type: sql.UniqueIdentifier, value: dto.bookingId },
+          { name: 'ID_Host', type: sql.UniqueIdentifier, value: hostId },
+          { name: 'PropertyCondition', type: sql.VarChar(20), value: dto.propertyCondition },
+          { name: 'HostNotes', type: sql.NVarChar(1000), value: dto.hostNotes ?? null },
+        ],
+        [],
+      );
+
+      const row = result.recordset?.[0];
+      if (!row) {
+        throw new InternalServerErrorException('Respuesta inesperada del servidor');
+      }
+
+      if (row.Success !== 1) {
+        throw new BadRequestException(row.Message ?? 'No se pudo realizar el check-out');
+      }
+
+      return {
+        success: true,
+        data: {
+          bookingCode: row.BookingCode,
+          propertyCondition: row.PropertyCondition,
+          newStatus: row.NewStatus,
+          checkOutTime: row.CheckOutTime,
+          message: row.Message,
+        },
+      };
+    } catch (error) {
+      if (error instanceof BadRequestException) throw error;
+      if (error instanceof InternalServerErrorException) throw error;
+      this.logger.error(`Error en ${SP_CHECK_OUT}: ${error.message}`);
+      throw new InternalServerErrorException('Error al procesar el check-out');
+    }
+  }
+
+  // ─────────────────────────────────────────────
+  // CALCULAR REEMBOLSO (solo cálculo, no modifica)
+  // ─────────────────────────────────────────────
+
+  async calculateRefund(dto: CalculateRefundDto) {
+    try {
+      const result = await this.databaseService.executeStoredProcedure<any>(
+        SP_CALCULATE_REFUND,
+        [
+          { name: 'ID_Booking', type: sql.UniqueIdentifier, value: dto.bookingId },
+          { name: 'CancellationReason', type: sql.VarChar(50), value: dto.cancellationReason ?? 'guest_request' },
+          { name: 'IsForceMapprovement', type: sql.Bit, value: 0 },
+        ],
+        [],
+      );
+
+      const row = result.recordset?.[0];
+      if (!row) {
+        throw new InternalServerErrorException('Respuesta inesperada del servidor');
+      }
+
+      if (row.Success !== 1) {
+        throw new BadRequestException(row.Message ?? 'No se pudo calcular el reembolso');
+      }
+
+      return {
+        success: true,
+        data: {
+          bookingId: row.ID_Booking,
+          totalPaid: Number(row.TotalPaid),
+          refundPercentage: Number(row.RefundPercentage),
+          refundAmount: Number(row.RefundAmount),
+          daysUntilCheckIn: row.DaysUntilCheckIn,
+          cancellationReason: row.CancellationReason,
+          policyDescription: row.PolicyDescription,
+        },
+      };
+    } catch (error) {
+      if (error instanceof BadRequestException) throw error;
+      if (error instanceof InternalServerErrorException) throw error;
+      this.logger.error(`Error en ${SP_CALCULATE_REFUND}: ${error.message}`);
+      throw new InternalServerErrorException('Error al calcular el reembolso');
+    }
+  }
+
+  // ─────────────────────────────────────────────
+  // CANCELAR RESERVA + REFUND EN STRIPE
+  // ─────────────────────────────────────────────
+
+  async cancelBooking(dto: CancelBookingDto, userId: string) {
+    let spRow: any;
+    try {
+      const result = await this.databaseService.executeStoredProcedure<any>(
+        SP_CANCEL_BOOKING,
+        [
+          { name: 'ID_Booking', type: sql.UniqueIdentifier, value: dto.bookingId },
+          { name: 'ID_User', type: sql.UniqueIdentifier, value: userId },
+          { name: 'CancellationReason', type: sql.VarChar(50), value: dto.cancellationReason ?? 'guest_request' },
+          { name: 'IsForceMajeurApproved', type: sql.Bit, value: dto.isForceMajeurApproved ?? false },
+          { name: 'IsAdmin', type: sql.Bit, value: dto.isAdmin ?? false },
+        ],
+        [],
+      );
+
+      spRow = result.recordset?.[0];
+    } catch (error) {
+      this.logger.error(`Error ejecutando ${SP_CANCEL_BOOKING}: ${error.message}`);
+      throw new InternalServerErrorException('Error al cancelar la reserva');
+    }
+
+    if (!spRow) {
+      throw new InternalServerErrorException('Respuesta inesperada del servidor');
+    }
+
+    if (spRow.Success !== 1) {
+      throw new BadRequestException(spRow.Message ?? 'No se pudo cancelar la reserva');
+    }
+
+    // Si hay monto a reembolsar y tenemos PaymentIntentId, hacer refund en Stripe
+    const refundAmount = Number(spRow.RefundAmount);
+    let stripeRefundId: string | null = null;
+
+    if (refundAmount > 0 && spRow.PaymentIntentId) {
+      try {
+        const stripe = this.getStripe();
+        const refund = await stripe.refunds.create({
+          payment_intent: spRow.PaymentIntentId,
+          amount: Math.round(refundAmount * 100),
+          reason: 'requested_by_customer',
+        });
+        stripeRefundId = refund.id;
+        this.logger.log(
+          `Refund ${refund.id} creado por $${refundAmount} para booking ${dto.bookingId}`,
+        );
+      } catch (stripeErr: any) {
+        this.logger.error(
+          `Error creando refund en Stripe para booking ${dto.bookingId}: ${stripeErr.message}`,
+        );
+      }
+    }
+
+    return {
+      success: true,
+      data: {
+        bookingCode: spRow.BookingCode,
+        refundId: spRow.ID_Refund,
+        refundAmount,
+        refundPercentage: Number(spRow.RefundPercentage),
+        stripeRefundId,
+        policyDescription: spRow.PolicyDescription,
+        message: spRow.Message,
+      },
+    };
   }
 
   // ─────────────────────────────────────────────

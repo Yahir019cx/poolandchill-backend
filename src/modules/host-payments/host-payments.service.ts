@@ -5,6 +5,7 @@ import {
   InternalServerErrorException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import Stripe from 'stripe';
 import * as sql from 'mssql';
 import { DatabaseService } from '../../config/database.config';
@@ -12,6 +13,9 @@ import { BookingService } from '../booking/booking.service';
 
 const SP_REGISTER_STRIPE_ACCOUNT = '[payment].[xsp_RegisterStripeAccount]';
 const SP_GET_STRIPE_ACCOUNT_BY_USER_ID = '[payment].[xsp_GetStripeAccountByUserId]';
+const SP_PROCESS_PAYOUT = '[payment].[xsp_ProcessPayout]';
+const SP_UPDATE_PAYOUT_STATUS = '[payment].[xsp_UpdatePayoutStatus]';
+const SP_GET_SCHEDULED_PAYOUTS = '[payment].[xsp_GetScheduledPayouts]';
 
 @Injectable()
 export class HostPaymentsService {
@@ -40,16 +44,22 @@ export class HostPaymentsService {
    * Lanza BadRequestException si la firma es inválida.
    */
   async processWebhook(rawBody: Buffer | string, signature: string): Promise<{ received: boolean }> {
-    const secrets = [
-      this.configService.get<string>('STRIPE_WEBHOOK_SECRET'),
-      this.configService.get<string>('STRIPE_PAYMENT_WEBHOOK_SECRET'),
-    ].filter(Boolean) as string[];
+    this.logger.log(`[WEBHOOK] Recibido — signature presente: ${!!signature}, rawBody length: ${rawBody?.length ?? 0}`);
+
+    const connectSecret = this.configService.get<string>('STRIPE_WEBHOOK_SECRET');
+    const paymentSecret = this.configService.get<string>('STRIPE_PAYMENT_WEBHOOK_SECRET');
+
+    this.logger.log(`[WEBHOOK] Secrets disponibles — STRIPE_WEBHOOK_SECRET: ${connectSecret ? 'SI (' + connectSecret.slice(0, 10) + '...)' : 'NO'}, STRIPE_PAYMENT_WEBHOOK_SECRET: ${paymentSecret ? 'SI (' + paymentSecret.slice(0, 10) + '...)' : 'NO'}`);
+
+    const secrets = [connectSecret, paymentSecret].filter(Boolean) as string[];
 
     if (secrets.length === 0) {
+      this.logger.error('[WEBHOOK] Ningún webhook secret configurado');
       throw new InternalServerErrorException('Ningún webhook secret de Stripe configurado');
     }
 
     let event: Stripe.Event | null = null;
+    let verifiedWithSecret = '';
     for (const secret of secrets) {
       try {
         event = this.getStripe().webhooks.constructEvent(
@@ -57,40 +67,56 @@ export class HostPaymentsService {
           signature,
           secret,
         ) as Stripe.Event;
+        verifiedWithSecret = secret.slice(0, 10) + '...';
         break;
-      } catch {
-        // Intentar con el siguiente secret
+      } catch (err: any) {
+        this.logger.warn(`[WEBHOOK] Fallo verificación con secret ${secret.slice(0, 10)}...: ${err.message}`);
       }
     }
 
     if (!event) {
+      this.logger.error('[WEBHOOK] Firma inválida con TODOS los secrets');
       throw new BadRequestException('Firma de webhook inválida');
     }
 
     const eventType = event.type as string;
+    this.logger.log(`[WEBHOOK] Evento verificado OK (secret: ${verifiedWithSecret}) — tipo: ${eventType}, id: ${event.id}`);
 
     if (eventType === 'payment_intent.succeeded') {
       const pi = event.data.object as Stripe.PaymentIntent;
       const bookingId = pi.metadata?.bookingId;
 
-      if (bookingId) {
-        await this.bookingService.confirmPaymentFromStripe(bookingId, {
-          paymentIntentId: pi.id,
-          chargeId: typeof pi.latest_charge === 'string' ? pi.latest_charge : pi.latest_charge?.id ?? null,
-          amount: pi.amount / 100,
-          currency: pi.currency?.toUpperCase() ?? 'MXN',
-          paymentStatus: pi.status,
-          paymentMethod: typeof pi.payment_method === 'string' ? pi.payment_method : pi.payment_method?.id ?? null,
-          clientSecret: pi.client_secret ?? null,
-        });
-      } else {
-        this.logger.warn(`payment_intent.succeeded sin bookingId en metadata: ${pi.id}`);
-      }
-    }
+      this.logger.log(`[WEBHOOK] payment_intent.succeeded — PI: ${pi.id}, amount: ${pi.amount}, metadata: ${JSON.stringify(pi.metadata)}`);
 
-    if (eventType === 'account.created' || eventType === 'account.updated') {
+      if (bookingId) {
+        this.logger.log(`[WEBHOOK] Llamando confirmPaymentFromStripe para booking ${bookingId}...`);
+        try {
+          await this.bookingService.confirmPaymentFromStripe(bookingId, {
+            paymentIntentId: pi.id,
+            chargeId: typeof pi.latest_charge === 'string' ? pi.latest_charge : pi.latest_charge?.id ?? null,
+            amount: pi.amount / 100,
+            currency: pi.currency?.toUpperCase() ?? 'MXN',
+            paymentStatus: pi.status,
+            paymentMethod: typeof pi.payment_method === 'string' ? pi.payment_method : pi.payment_method?.id ?? null,
+            clientSecret: pi.client_secret ?? null,
+          });
+          this.logger.log(`[WEBHOOK] confirmPaymentFromStripe completado OK para booking ${bookingId}`);
+        } catch (err: any) {
+          this.logger.error(`[WEBHOOK] ERROR en confirmPaymentFromStripe para booking ${bookingId}: ${err.message}`, err.stack);
+        }
+      } else {
+        this.logger.warn(`[WEBHOOK] payment_intent.succeeded SIN bookingId en metadata — PI: ${pi.id}, metadata: ${JSON.stringify(pi.metadata)}`);
+      }
+    } else if (eventType === 'account.created' || eventType === 'account.updated') {
       const account = event.data.object as Stripe.Account;
+      this.logger.log(`[WEBHOOK] ${eventType} — account: ${account.id}`);
       await this.handleAccountUpdated(account);
+    } else if (eventType.startsWith('transfer.')) {
+      const transfer = event.data.object as Stripe.Transfer;
+      this.logger.log(`[WEBHOOK] ${eventType} — transfer: ${transfer.id}, amount: ${transfer.amount}`);
+      await this.handleTransferEvent(eventType, transfer);
+    } else {
+      this.logger.log(`[WEBHOOK] Evento no manejado: ${eventType}`);
     }
 
     return { received: true };
@@ -180,7 +206,42 @@ export class HostPaymentsService {
       onboardingCompleted,
       onboardingUrl: null,
     });
+  }
 
+  /**
+   * Procesa eventos de transfer (transfer.paid, transfer.failed, transfer.reversed).
+   */
+  private async handleTransferEvent(eventType: string, transfer: Stripe.Transfer): Promise<void> {
+    let newStatus: string;
+
+    if (eventType === 'transfer.paid') {
+      newStatus = 'completed';
+    } else if (eventType === 'transfer.failed') {
+      newStatus = 'failed';
+    } else if (eventType === 'transfer.reversed') {
+      newStatus = 'cancelled';
+    } else {
+      this.logger.log(`[WEBHOOK] Evento transfer no manejado: ${eventType}`);
+      return;
+    }
+
+    try {
+      const result = await this.databaseService.executeStoredProcedure<any>(
+        SP_UPDATE_PAYOUT_STATUS,
+        [
+          { name: 'StripeTransferId', type: sql.VarChar(100), value: transfer.id },
+          { name: 'NewStatus', type: sql.VarChar(50), value: newStatus },
+          { name: 'FailureCode', type: sql.VarChar(100), value: (transfer as any).failure_code ?? null },
+          { name: 'FailureMessage', type: sql.VarChar(500), value: (transfer as any).failure_message ?? null },
+        ],
+        [],
+      );
+
+      const row = result.recordset?.[0];
+      this.logger.log(`[WEBHOOK] UpdatePayoutStatus resultado: ${JSON.stringify(row)}`);
+    } catch (err: any) {
+      this.logger.error(`[WEBHOOK] Error en UpdatePayoutStatus para transfer ${transfer.id}: ${err.message}`);
+    }
   }
 
   private async getUserIdByStripeAccountId(stripeAccountId: string): Promise<string | null> {
@@ -310,6 +371,118 @@ export class HostPaymentsService {
     const row = result.recordset?.[0];
     if (row && row.Success !== 1) {
       throw new InternalServerErrorException(row.Message ?? 'Error al registrar cuenta Stripe');
+    }
+  }
+
+  // ─────────────────────────────────────────────
+  // CRON: PROCESAR PAYOUTS PROGRAMADOS
+  // ─────────────────────────────────────────────
+
+  @Cron(CronExpression.EVERY_HOUR)
+  async handlePayoutsCron() {
+    this.logger.log('[PAYOUT CRON] Buscando payouts pendientes...');
+    try {
+      await this.processPendingPayouts();
+    } catch (err: any) {
+      this.logger.error(`[PAYOUT CRON] Error: ${err.message}`);
+    }
+  }
+
+  async processPendingPayouts(): Promise<{ processed: number; failed: number }> {
+    const result = await this.databaseService.executeStoredProcedure<{
+      ID_Payout: string;
+    }>(SP_GET_SCHEDULED_PAYOUTS, [], []);
+
+    const pendingPayouts = result.recordset ?? [];
+
+    if (pendingPayouts.length === 0) {
+      this.logger.log('[PAYOUT CRON] No hay payouts programados');
+      return { processed: 0, failed: 0 };
+    }
+
+    this.logger.log(`[PAYOUT CRON] ${pendingPayouts.length} payouts programados, intentando procesar...`);
+
+    let processed = 0;
+    let failed = 0;
+
+    for (const payout of pendingPayouts) {
+      try {
+        await this.processOnePayout(payout.ID_Payout);
+        processed++;
+      } catch (err: any) {
+        this.logger.error(`[PAYOUT] Error procesando ${payout.ID_Payout}: ${err.message}`);
+        failed++;
+      }
+    }
+
+    this.logger.log(`[PAYOUT CRON] Resultado: ${processed} procesados, ${failed} fallidos`);
+    return { processed, failed };
+  }
+
+  private async processOnePayout(payoutId: string): Promise<void> {
+    // Fase 1: Marcar como processing y obtener datos de Stripe
+    const phase1 = await this.databaseService.executeStoredProcedure<any>(
+      SP_PROCESS_PAYOUT,
+      [
+        { name: 'ID_Payout', type: sql.UniqueIdentifier, value: payoutId },
+        { name: 'StripeTransferId', type: sql.VarChar(100), value: null },
+        { name: 'StripeChargeId', type: sql.VarChar(100), value: null },
+        { name: 'NewStatus', type: sql.VarChar(50), value: 'processing' },
+      ],
+      [],
+    );
+
+    const row = phase1.recordset?.[0];
+    if (!row || row.Success !== 1) {
+      this.logger.warn(`[PAYOUT] SP rechazó payout ${payoutId}: ${row?.Message}`);
+      return;
+    }
+
+    const stripeAccountId: string = row.StripeAccountId;
+    const amount: number = Number(row.Amount);
+    const currency: string = (row.Currency ?? 'MXN').toLowerCase();
+
+    this.logger.log(`[PAYOUT] Creando Transfer: $${amount} ${currency} → ${stripeAccountId}`);
+
+    // Fase 2: Crear Transfer en Stripe
+    try {
+      const stripe = this.getStripe();
+      const transfer = await stripe.transfers.create({
+        amount: Math.round(amount * 100),
+        currency,
+        destination: stripeAccountId,
+        description: `Payout ${payoutId}`,
+      });
+
+      this.logger.log(`[PAYOUT] Transfer creado: ${transfer.id}`);
+
+      // Fase 3: Marcar como completed
+      await this.databaseService.executeStoredProcedure<any>(
+        SP_PROCESS_PAYOUT,
+        [
+          { name: 'ID_Payout', type: sql.UniqueIdentifier, value: payoutId },
+          { name: 'StripeTransferId', type: sql.VarChar(100), value: transfer.id },
+          { name: 'StripeChargeId', type: sql.VarChar(100), value: transfer.destination_payment as string ?? null },
+          { name: 'NewStatus', type: sql.VarChar(50), value: 'completed' },
+        ],
+        [],
+      );
+
+      this.logger.log(`[PAYOUT] Payout ${payoutId} completado OK`);
+    } catch (stripeErr: any) {
+      this.logger.error(`[PAYOUT] Stripe Transfer falló para ${payoutId}: ${stripeErr.message}`);
+
+      // Marcar como failed (el SP programa reintento o pone hold)
+      await this.databaseService.executeStoredProcedure<any>(
+        SP_PROCESS_PAYOUT,
+        [
+          { name: 'ID_Payout', type: sql.UniqueIdentifier, value: payoutId },
+          { name: 'StripeTransferId', type: sql.VarChar(100), value: null },
+          { name: 'StripeChargeId', type: sql.VarChar(100), value: null },
+          { name: 'NewStatus', type: sql.VarChar(50), value: 'failed' },
+        ],
+        [],
+      );
     }
   }
 }
