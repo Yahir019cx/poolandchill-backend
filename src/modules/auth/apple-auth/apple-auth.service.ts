@@ -92,6 +92,8 @@ export class AppleAuthService {
         providerUserId,
         email,
         displayName,
+        firstName,
+        lastName,
       );
 
       const user = await this.getUserLoginData(userId);
@@ -159,6 +161,8 @@ export class AppleAuthService {
     providerUserId: string,
     email: string,
     displayName: string,
+    firstName?: string,
+    lastName?: string,
   ): Promise<{ userId: string; isNewUser: boolean }> {
     const result = await this.databaseService.executeStoredProcedure(
       '[security].[xsp_login_with_provider]',
@@ -166,8 +170,10 @@ export class AppleAuthService {
         { name: 'ProviderType', type: sql.Int, value: 2 },
         { name: 'ProviderUserId', type: sql.NVarChar(255), value: providerUserId },
         { name: 'ProviderEmail', type: sql.NVarChar(255), value: email },
-        { name: 'ProviderDisplayName', type: sql.NVarChar(500), value: displayName },
+        { name: 'ProviderDisplayName', type: sql.NVarChar(500), value: displayName || null },
         { name: 'ProviderPhotoUrl', type: sql.NVarChar(2000), value: '' },
+        { name: 'FirstName', type: sql.NVarChar(100), value: firstName || null },
+        { name: 'LastName', type: sql.NVarChar(100), value: lastName || null },
       ],
       [
         { name: 'UserId', type: sql.UniqueIdentifier },
