@@ -280,6 +280,8 @@ export class BookingService {
         bookingDate: spRow.BookingDate ?? null,
         checkInDate: spRow.CheckInDate ?? null,
         checkOutDate: spRow.CheckOutDate ?? null,
+        checkInTime: spRow.CheckInTime ?? null,
+        checkOutTime: spRow.CheckOutTime ?? null,
         numberOfNights: spRow.NumberOfNights ?? null,
         basePrice: Number(spRow.BasePrice),
         guestServiceFee: Number(spRow.GuestServiceFee),

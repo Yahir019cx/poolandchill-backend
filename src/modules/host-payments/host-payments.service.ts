@@ -51,7 +51,7 @@ export class HostPaymentsService {
 
     this.logger.log(`[WEBHOOK] Secrets disponibles — STRIPE_WEBHOOK_SECRET: ${connectSecret ? 'SI (' + connectSecret.slice(0, 10) + '...)' : 'NO'}, STRIPE_PAYMENT_WEBHOOK_SECRET: ${paymentSecret ? 'SI (' + paymentSecret.slice(0, 10) + '...)' : 'NO'}`);
 
-    const secrets = [connectSecret, paymentSecret].filter(Boolean) as string[];
+    const secrets = [paymentSecret, connectSecret].filter(Boolean) as string[];
 
     if (secrets.length === 0) {
       this.logger.error('[WEBHOOK] Ningún webhook secret configurado');

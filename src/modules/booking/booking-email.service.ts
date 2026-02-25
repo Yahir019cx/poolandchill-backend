@@ -17,6 +17,8 @@ export interface SendBookingConfirmedEmailParams {
   bookingDate?: string | null;
   checkInDate?: string | null;
   checkOutDate?: string | null;
+  checkInTime?: string | null;
+  checkOutTime?: string | null;
   numberOfNights?: number | null;
   basePrice: number;
   guestServiceFee: number;
@@ -54,6 +56,8 @@ export class BookingEmailService {
       bookingDate: params.bookingDate ?? undefined,
       checkInDate: params.checkInDate ?? undefined,
       checkOutDate: params.checkOutDate ?? undefined,
+      checkInTime: params.checkInTime ?? undefined,
+      checkOutTime: params.checkOutTime ?? undefined,
       numberOfNights: params.numberOfNights ?? undefined,
       basePrice: params.basePrice,
       guestServiceFee: params.guestServiceFee,
@@ -68,7 +72,7 @@ export class BookingEmailService {
       this.logger.log(`[EMAIL] Enviando correo a ${params.guestEmail} (Zoho)...`);
       await this.mailer.sendMail(
         params.guestEmail,
-        `✅ Reserva confirmada — ${params.bookingCode}`,
+        `Reserva confirmada — ${params.bookingCode}`,
         html,
         undefined,
         [

@@ -1,12 +1,7 @@
 {
   "permissions": {
     "allow": [
-      "Bash(pnpm install:*)",
-      "Bash(pnpm run build:*)",
-      "WebFetch(domain:docs.didit.me)",
-      "Bash(where:*)",
-      "Bash(npm run build:*)",
-      "Bash(cat:*)"
+      "Bash(node -e \":*)"
     ]
   }
 }
