@@ -15,6 +15,12 @@ export interface BookingConfirmedTemplateParams {
   totalIVA: number;
   totalGuestPayment: number;
   qrCodeCid: string;
+  propertyName?: string;
+  hasPool?: boolean;
+  hasCabin?: boolean;
+  hasCamping?: boolean;
+  latitude?: number;
+  longitude?: number;
 }
 
 function formatCurrency(amount: number): string {
@@ -56,7 +62,45 @@ export function bookingConfirmedTemplate(params: BookingConfirmedTemplateParams)
     totalIVA,
     totalGuestPayment,
     qrCodeCid,
+    propertyName,
+    hasPool,
+    hasCabin,
+    hasCamping,
+    latitude,
+    longitude,
   } = params;
+
+  // ── Label de tipo de propiedad ──────────────────────────────────────────────
+  const typeLabels: string[] = [];
+  if (hasPool) typeLabels.push('Alberca');
+  if (hasCabin) typeLabels.push('Cabana');
+  if (hasCamping) typeLabels.push('Camping');
+  const propertyTypeLabel = typeLabels.join(' + ') || null;
+
+  // ── Bloque de propiedad ─────────────────────────────────────────────────────
+  const mapsUrl = latitude && longitude
+    ? `https://www.google.com/maps?q=${latitude},${longitude}`
+    : null;
+
+  const propertyBlock = (propertyName || propertyTypeLabel || mapsUrl) ? `
+    <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom: 24px;">
+      <tr>
+        <td style="background-color: ${colors.white}; padding: 20px; border-radius: 10px; border: 1px solid #E8E8E8;">
+          <p style="margin: 0 0 12px 0; color: ${colors.secondary}; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px;">Propiedad</p>
+          ${propertyName ? `<p style="margin: 0 0 4px 0; font-size: 16px; font-weight: 700; color: ${colors.dark};">${propertyName}</p>` : ''}
+          ${propertyTypeLabel ? `<p style="margin: 0 ${mapsUrl ? '0 14px' : '0'} 0; font-size: 13px; color: ${colors.textLight};">${propertyTypeLabel}</p>` : ''}
+          ${mapsUrl ? `
+          <table border="0" cellpadding="0" cellspacing="0" style="margin-top: 14px;">
+            <tr>
+              <td align="center" style="background-color: ${colors.primary}; border-radius: 6px; padding: 9px 18px;">
+                <a href="${mapsUrl}" target="_blank" style="color: ${colors.white}; font-size: 13px; font-weight: 600; text-decoration: none;">Ver ubicacion en Maps</a>
+              </td>
+            </tr>
+          </table>` : ''}
+        </td>
+      </tr>
+    </table>` : '';
+
 
   // ── Bloque de fechas ────────────────────────────────────────────────────────
   let datesBlock: string;
@@ -130,6 +174,9 @@ export function bookingConfirmedTemplate(params: BookingConfirmedTemplateParams)
             </td>
           </tr>
         </table>
+
+        <!-- Propiedad -->
+        ${propertyBlock}
 
         <!-- Resumen de pago -->
         <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom: 32px;">

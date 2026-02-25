@@ -24,6 +24,12 @@ export interface SendBookingConfirmedEmailParams {
   guestServiceFee: number;
   totalIVA: number;
   totalGuestPayment: number;
+  propertyName?: string | null;
+  hasPool?: boolean | null;
+  hasCabin?: boolean | null;
+  hasCamping?: boolean | null;
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 @Injectable()
@@ -59,6 +65,12 @@ export class BookingEmailService {
       checkInTime: params.checkInTime ?? undefined,
       checkOutTime: params.checkOutTime ?? undefined,
       numberOfNights: params.numberOfNights ?? undefined,
+      propertyName: params.propertyName ?? undefined,
+      hasPool: params.hasPool ?? undefined,
+      hasCabin: params.hasCabin ?? undefined,
+      hasCamping: params.hasCamping ?? undefined,
+      latitude: params.latitude ?? undefined,
+      longitude: params.longitude ?? undefined,
       basePrice: params.basePrice,
       guestServiceFee: params.guestServiceFee,
       totalIVA: params.totalIVA,
