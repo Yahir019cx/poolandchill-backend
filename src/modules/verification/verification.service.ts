@@ -27,7 +27,7 @@ export class VerificationService {
   /**
    * Inicia una sesión de verificación en Didit
    */
-  async startVerification(userId: string) {
+  async startVerification(userId: string, platform: 'web' | 'mobile' = 'web') {
     const apiKey = this.configService.get<string>('DIDIT_API_KEY');
     const workflowId = this.configService.get<string>('DIDIT_WORKFLOW_ID');
     const callbackUrl = this.configService.get<string>('DIDIT_CALLBACK_URL');
@@ -72,7 +72,9 @@ export class VerificationService {
           workflow_id: workflowId,
           callback: callbackUrl,
           vendor_data: userId, // Nuestro userId para identificar en el webhook
-          redirect_url: this.configService.get<string>('DIDIT_REDIRECT_URL'),
+          redirect_url: this.configService.get<string>(
+            platform === 'mobile' ? 'DIDIT_REDIRECT_URL_MOBILE' : 'DIDIT_REDIRECT_URL_WEB',
+          ),
         }),
       });
 

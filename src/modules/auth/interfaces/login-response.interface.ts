@@ -62,6 +62,27 @@ export interface GoogleLoginResponse {
 }
 
 /**
+ * Respuesta del endpoint de login con Apple (POST /auth/apple).
+ * Incluye isNewUser para indicar si el usuario se registró en este login.
+ */
+export interface AppleLoginResponse {
+  /** Access Token JWT del sistema (15 minutos de validez) */
+  accessToken: string;
+
+  /** Refresh Token UUID (90 días de validez) */
+  refreshToken: string;
+
+  /** Tiempo de expiración del Access Token en segundos */
+  expiresIn: number;
+
+  /** Datos del usuario autenticado */
+  user: LoginUserData;
+
+  /** true si el usuario fue creado en este login (primera vez con Apple) */
+  isNewUser: boolean;
+}
+
+/**
  * Respuesta del endpoint de refresh token
  */
 export interface RefreshResponse {

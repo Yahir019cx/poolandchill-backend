@@ -82,7 +82,8 @@ export class VerificationController {
   @ApiResponse({ status: 401, description: 'No autenticado' })
   async startVerification(@Request() req: any) {
     const userId = req.user.userId;
-    return this.verificationService.startVerification(userId);
+    const platform = req.path.startsWith('/kyc') ? 'mobile' : 'web';
+    return this.verificationService.startVerification(userId, platform);
   }
 
   @Get('status')

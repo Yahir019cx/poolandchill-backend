@@ -31,6 +31,10 @@ import { ForgotPasswordService } from './forgot-password/forgot-password.service
 import { GoogleAuthController } from './google-auth/google-auth.controller';
 import { GoogleAuthService } from './google-auth/google-auth.service';
 
+// Apple Auth (Identity Token validation server-side)
+import { AppleAuthController } from './apple-auth/apple-auth.controller';
+import { AppleAuthService } from './apple-auth/apple-auth.service';
+
 // JWT Strategy & Guard
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
@@ -81,6 +85,7 @@ import { ZohoMailService } from '../../web/email/zoho-mail.service';
     LogoutController,
     ForgotPasswordController,
     GoogleAuthController,
+    AppleAuthController,
   ],
   providers: [
     RegisterService,
@@ -90,6 +95,7 @@ import { ZohoMailService } from '../../web/email/zoho-mail.service';
     LogoutService,
     ForgotPasswordService,
     GoogleAuthService,
+    AppleAuthService,
     JwtStrategy,
     JwtAuthGuard,
     ZohoMailService,
@@ -102,6 +108,7 @@ import { ZohoMailService } from '../../web/email/zoho-mail.service';
     LogoutService,
     ForgotPasswordService,
     GoogleAuthService,
+    AppleAuthService,
     JwtAuthGuard,
     JwtStrategy,
   ],
