@@ -10,6 +10,7 @@ import {
   HttpStatus,
   UseGuards,
   Res,
+  Logger,
 } from '@nestjs/common';
 import type { RawBodyRequest } from '@nestjs/common';
 import {
@@ -27,6 +28,8 @@ import { CreateConnectAccountDto } from './dto/create-connect-account.dto';
 @ApiTags('Host Payments (Stripe Connect)')
 @Controller('stripe')
 export class HostPaymentsController {
+  private readonly logger = new Logger(HostPaymentsController.name);
+
   constructor(private readonly hostPaymentsService: HostPaymentsService) {}
 
   @Post('connect/create-account')
@@ -136,7 +139,11 @@ export class HostPaymentsController {
     @Headers('stripe-signature') signature: string,
   ) {
     const rawBody = req.rawBody;
+    this.logger.log(
+      `[WEBHOOK ENTRY] POST /stripe/webhook — rawBody: ${rawBody ? `SI (${rawBody.length} bytes)` : 'NO'}, signature: ${signature ? 'SI' : 'NO'}`,
+    );
     if (!rawBody || !signature) {
+      this.logger.warn('[WEBHOOK ENTRY] Rechazado: falta rawBody o signature');
       throw new BadRequestException('Cuerpo o firma del webhook ausentes');
     }
     return this.hostPaymentsService.processWebhook(rawBody, signature);

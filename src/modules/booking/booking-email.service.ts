@@ -31,6 +31,8 @@ export class BookingEmailService {
   constructor(private readonly mailer: ZohoMailService) {}
 
   async sendBookingConfirmedEmail(params: SendBookingConfirmedEmailParams): Promise<void> {
+    this.logger.log(`[EMAIL] sendBookingConfirmedEmail iniciado — to: ${params.guestEmail}, bookingCode: ${params.bookingCode}`);
+
     let qrBuffer: Buffer;
     try {
       qrBuffer = await QRCode.toBuffer(params.qrCodeData, {
@@ -39,8 +41,9 @@ export class BookingEmailService {
         margin: 2,
         color: { dark: '#063940', light: '#FFFFFF' },
       });
+      this.logger.log(`[EMAIL] QR generado OK (${qrBuffer.length} bytes) para ${params.bookingCode}`);
     } catch (err) {
-      this.logger.error(`Error generando QR para reserva ${params.bookingCode}: ${err.message}`);
+      this.logger.error(`[EMAIL] Error generando QR para ${params.bookingCode}: ${err.message}`);
       throw err;
     }
 
@@ -62,6 +65,7 @@ export class BookingEmailService {
     const html = bookingConfirmedTemplate(templateParams);
 
     try {
+      this.logger.log(`[EMAIL] Enviando correo a ${params.guestEmail} (Zoho)...`);
       await this.mailer.sendMail(
         params.guestEmail,
         `✅ Reserva confirmada — ${params.bookingCode}`,
@@ -76,10 +80,10 @@ export class BookingEmailService {
           },
         ],
       );
-      this.logger.log(`Email de confirmación enviado a ${params.guestEmail} [${params.bookingCode}]`);
+      this.logger.log(`[EMAIL] Correo enviado OK a ${params.guestEmail} [${params.bookingCode}]`);
     } catch (err) {
       this.logger.error(
-        `Error enviando email de confirmación a ${params.guestEmail}: ${err.message}`,
+        `[EMAIL] Error enviando a ${params.guestEmail}: ${err.message}`,
       );
       throw err;
     }
