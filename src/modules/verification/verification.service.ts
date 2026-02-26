@@ -30,7 +30,7 @@ export class VerificationService {
   async startVerification(userId: string, platform: 'web' | 'mobile' = 'web') {
     const apiKey = this.configService.get<string>('DIDIT_API_KEY');
     const workflowId = this.configService.get<string>('DIDIT_WORKFLOW_ID');
-    const callbackUrl = this.configService.get<string>('DIDIT_CALLBACK_URL');
+    const webhookUrl = this.configService.get<string>('DIDIT_CALLBACK_URL');
 
     if (!apiKey || !workflowId) {
       throw new InternalServerErrorException('Configuración de Didit incompleta');
@@ -61,6 +61,18 @@ export class VerificationService {
       }
 
       // Crear nueva sesión en Didit
+      const redirectUrl = this.configService.get<string>(
+        platform === 'mobile' ? 'DIDIT_REDIRECT_URL_MOBILE' : 'DIDIT_REDIRECT_URL_WEB',
+      );
+      this.logger.log(`[Didit] platform=${platform} redirect_url=${redirectUrl ?? '(undefined)'}`);
+
+      const diditBody: Record<string, string> = {
+        workflow_id: workflowId,
+        ...(webhookUrl ? { webhook_url: webhookUrl } : {}),
+        ...(redirectUrl ? { redirect_url: redirectUrl } : {}),
+        vendor_data: userId,
+      };
+
       const response = await fetch(`${this.diditApiUrl}/session/`, {
         method: 'POST',
         headers: {
@@ -68,21 +80,14 @@ export class VerificationService {
           'content-type': 'application/json',
           'x-api-key': apiKey,
         },
-        body: JSON.stringify({
-          workflow_id: workflowId,
-          callback: callbackUrl,
-          vendor_data: userId, // Nuestro userId para identificar en el webhook
-          redirect_url: this.configService.get<string>(
-            platform === 'mobile' ? 'DIDIT_REDIRECT_URL_MOBILE' : 'DIDIT_REDIRECT_URL_WEB',
-          ),
-        }),
+        body: JSON.stringify(diditBody),
       });
 
       if (!response.ok) {
         const errorBody = await response.text();
         this.logger.error(`Error de Didit: ${response.status} - ${errorBody}`);
         this.logger.error(`Request details - URL: ${this.diditApiUrl}/session/`);
-        this.logger.error(`Request details - Headers: ${JSON.stringify({ 'x-api-key': apiKey.substring(0, 10) + '...', workflowId, callbackUrl })}`);
+        this.logger.error(`Request details - Headers: ${JSON.stringify({ 'x-api-key': apiKey.substring(0, 10) + '...', workflowId, webhookUrl })}`);
         throw new BadRequestException(`Error al crear sesión de verificación: ${response.status} - ${errorBody}`);
       }
 
