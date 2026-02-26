@@ -5,9 +5,12 @@ import {
   Body,
   UseGuards,
   Request,
+  Query,
+  Res,
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import {
   ApiTags,
   ApiOperation,
@@ -158,8 +161,34 @@ export class VerificationController {
   @Post('webhook/didit')
   @UseGuards(DiditWebhookGuard)
   @HttpCode(HttpStatus.OK)
-  @ApiExcludeEndpoint() // No mostrar en Swagger (es interno)
+  @ApiExcludeEndpoint()
   async handleWebhook(@Body() payload: DiditWebhookDto) {
     return this.verificationService.processWebhook(payload);
+  }
+
+  /**
+   * Puente de redirect para móvil: Didit redirige aquí (https), este endpoint
+   * redirige al deeplink de Flutter (poolandchill://kyc/result?status=...).
+   * Solo funciona vía /kyc/complete (no /verification/complete).
+   */
+  @Get('complete')
+  @ApiExcludeEndpoint()
+  kycComplete(
+    @Query('status') status: string,
+    @Query('verificationSessionId') sessionId: string,
+    @Res() res: Response,
+    @Request() req: any,
+  ) {
+    // Solo el alias /kyc/complete actúa como puente móvil
+    if (!req.path.startsWith('/kyc')) {
+      return res.status(HttpStatus.NOT_FOUND).json({ message: 'Not Found' });
+    }
+
+    const params = new URLSearchParams();
+    if (status) params.set('status', status);
+    if (sessionId) params.set('verificationSessionId', sessionId);
+
+    const deeplink = `poolandchill://kyc/result${params.toString() ? '?' + params.toString() : ''}`;
+    return res.redirect(302, deeplink);
   }
 }
