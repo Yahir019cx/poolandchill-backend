@@ -73,7 +73,7 @@ export function wrapInBaseTemplate(badge: string, content: string): string {
               <tr>
                 <td align="center" style="background: linear-gradient(135deg, ${colors.dark} 0%, ${colors.secondary} 100%); padding: 35px 30px;">
                   <img src="${logoUrl}" alt="Pool & Chill" width="100" style="display: block; max-width: 100px; height: auto; margin: 0 auto 15px auto; opacity: 0.9;" />
-                  <p style="margin: 0 0 10px 0; color: ${colors.primary}; font-size: 15px; font-weight: 500; font-style: italic;">Relájate, disfruta y reserva</p>
+                  <p style="margin: 0 0 10px 0; color: ${colors.primary}; font-size: 15px; font-weight: 500; font-style: italic;">El lujo de elegir</p>
                   <p style="margin: 0 0 8px 0; color: rgba(255,255,255,0.9); font-size: 12px; font-weight: 500;">&copy; ${new Date().getFullYear()} Pool & Chill. Todos los derechos reservados.</p>
                   <p style="margin: 0; color: ${colors.primary}; font-size: 11px; font-weight: 500;">Sistema de notificaciones automáticas</p>
                 </td>

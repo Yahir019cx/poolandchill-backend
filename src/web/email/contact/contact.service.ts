@@ -183,7 +183,7 @@ export class ContactService {
                 <tr>
                   <td align="center" style="background: linear-gradient(135deg, ${this.colors.dark} 0%, ${this.colors.secondary} 100%); padding: 40px 30px;">
                     <img src="${this.logoUrl}" alt="Pool & Chill" width="120" style="display: block; max-width: 120px; height: auto; margin: 0 auto 20px auto; opacity: 0.9;" />
-                    <p style="margin: 0 0 10px 0; color: ${this.colors.primary}; font-size: 16px; font-weight: 500; font-style: italic;">Relájate, disfruta y reserva</p>
+                    <p style="margin: 0 0 10px 0; color: ${this.colors.primary}; font-size: 16px; font-weight: 500; font-style: italic;">El lujo de elegir</p>
 
 
                     <p style="margin: 0 0 8px 0; color: rgba(255,255,255,0.9); font-size: 13px; font-weight: 500;">© 2025 Pool & Chill. Todos los derechos reservados.</p>
