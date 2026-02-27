@@ -565,6 +565,7 @@ export class BookingService {
           numberOfNights: b.NumberOfNights,
           propertyId: b.ID_Property,
           propertyName: b.PropertyName,
+          propertyImageUrl: b.PropertyImageUrl,
           propertyRating: {
             average: b.AvgPropertyRating,
             totalReviews: b.TotalPropertyReviews,
