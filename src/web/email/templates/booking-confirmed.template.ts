@@ -85,12 +85,12 @@ export function bookingConfirmedTemplate(params: BookingConfirmedTemplateParams)
   const propertyBlock = (propertyName || propertyTypeLabel || mapsUrl) ? `
     <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom: 24px;">
       <tr>
-        <td style="background-color: ${colors.white}; padding: 20px; border-radius: 10px; border: 1px solid #E8E8E8;">
+        <td align="center" style="background-color: ${colors.white}; padding: 20px; border-radius: 10px; border: 1px solid #E8E8E8; text-align: center;">
           <p style="margin: 0 0 12px 0; color: ${colors.secondary}; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px;">Propiedad</p>
           ${propertyName ? `<p style="margin: 0 0 4px 0; font-size: 16px; font-weight: 700; color: ${colors.dark};">${propertyName}</p>` : ''}
           ${propertyTypeLabel ? `<p style="margin: 0 ${mapsUrl ? '0 14px' : '0'} 0; font-size: 13px; color: ${colors.textLight};">${propertyTypeLabel}</p>` : ''}
           ${mapsUrl ? `
-          <table border="0" cellpadding="0" cellspacing="0" style="margin-top: 14px;">
+          <table border="0" cellpadding="0" cellspacing="0" style="margin: 14px auto 0 auto;">
             <tr>
               <td align="center" style="background-color: ${colors.primary}; border-radius: 6px; padding: 9px 18px;">
                 <a href="${mapsUrl}" target="_blank" style="color: ${colors.white}; font-size: 13px; font-weight: 600; text-decoration: none;">Ver ubicacion en Maps</a>
@@ -124,13 +124,13 @@ export function bookingConfirmedTemplate(params: BookingConfirmedTemplateParams)
     datesBlock = `
       <table border="0" cellpadding="0" cellspacing="0" width="100%">
         <tr>
-          <td width="48%" valign="top" style="background-color: #F0F9F9; border-radius: 8px; padding: 18px 16px; border-top: 3px solid ${colors.primary};">
+          <td width="48%" valign="top" align="center" style="background-color: #F0F9F9; border-radius: 8px; padding: 18px 16px; border-top: 3px solid ${colors.primary}; text-align: center;">
             <p style="margin: 0 0 4px 0; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: ${colors.primary}; font-weight: 700;">Llegada</p>
             <p style="margin: 0 0 6px 0; font-size: 14px; font-weight: 700; color: ${colors.dark};">${checkInDate ? capitalize(formatDate(checkInDate)) : '—'}</p>
             ${checkInTime ? `<p style="margin: 0; font-size: 13px; color: ${colors.textLight};">A partir de las ${checkInTime}</p>` : ''}
           </td>
           <td width="4%"></td>
-          <td width="48%" valign="top" style="background-color: #F0F9F9; border-radius: 8px; padding: 18px 16px; border-top: 3px solid ${colors.secondary};">
+          <td width="48%" valign="top" align="center" style="background-color: #F0F9F9; border-radius: 8px; padding: 18px 16px; border-top: 3px solid ${colors.secondary}; text-align: center;">
             <p style="margin: 0 0 4px 0; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: ${colors.secondary}; font-weight: 700;">Salida</p>
             <p style="margin: 0 0 6px 0; font-size: 14px; font-weight: 700; color: ${colors.dark};">${checkOutDate ? capitalize(formatDate(checkOutDate)) : '—'}</p>
             ${checkOutTime ? `<p style="margin: 0; font-size: 13px; color: ${colors.textLight};">Antes de las ${checkOutTime}</p>` : ''}
@@ -143,7 +143,7 @@ export function bookingConfirmedTemplate(params: BookingConfirmedTemplateParams)
   // ── Contenido ───────────────────────────────────────────────────────────────
   const content = `
     <tr>
-      <td style="padding: 0 40px 36px 40px;">
+      <td align="center" style="padding: 0 40px 36px 40px; text-align: center;">
 
         <!-- Saludo -->
         <h1 style="margin: 0 0 6px 0; color: ${colors.dark}; font-size: 22px; font-weight: 700; text-align: center;">
@@ -156,7 +156,7 @@ export function bookingConfirmedTemplate(params: BookingConfirmedTemplateParams)
         <!-- Codigo de reserva -->
         <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom: 24px;">
           <tr>
-            <td align="center" style="background: linear-gradient(135deg, ${colors.dark} 0%, ${colors.secondary} 100%); padding: 18px 24px; border-radius: 10px;">
+            <td align="center" style="background: linear-gradient(135deg, ${colors.dark} 0%, ${colors.secondary} 100%); padding: 18px 24px; border-radius: 10px; text-align: center;">
               <p style="margin: 0 0 4px 0; color: rgba(255,255,255,0.65); font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px;">Codigo de reserva</p>
               <p style="margin: 0; color: ${colors.white}; font-size: 24px; font-weight: 700; letter-spacing: 3px;">${bookingCode}</p>
             </td>
@@ -166,7 +166,7 @@ export function bookingConfirmedTemplate(params: BookingConfirmedTemplateParams)
         <!-- Detalle de fechas -->
         <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom: 24px;">
           <tr>
-            <td style="background-color: ${colors.white}; padding: 20px; border-radius: 10px; border: 1px solid #E8E8E8;">
+            <td align="center" style="background-color: ${colors.white}; padding: 20px; border-radius: 10px; border: 1px solid #E8E8E8; text-align: center;">
               <p style="margin: 0 0 16px 0; color: ${colors.secondary}; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px;">
                 Detalle de la reserva
               </p>
@@ -181,29 +181,29 @@ export function bookingConfirmedTemplate(params: BookingConfirmedTemplateParams)
         <!-- Resumen de pago -->
         <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom: 32px;">
           <tr>
-            <td style="background-color: #FAFAFA; padding: 20px; border-radius: 10px; border: 1px solid #E8E8E8;">
+            <td align="center" style="background-color: #FAFAFA; padding: 20px; border-radius: 10px; border: 1px solid #E8E8E8; text-align: center;">
               <p style="margin: 0 0 14px 0; color: ${colors.secondary}; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px;">
                 Resumen de pago
               </p>
-              <table border="0" cellpadding="0" cellspacing="0" width="100%">
+              <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin: 0 auto; max-width: 320px;">
                 <tr>
-                  <td style="padding: 5px 0; font-size: 14px; color: ${colors.textDark};">Precio base</td>
-                  <td align="right" style="padding: 5px 0; font-size: 14px; color: ${colors.textDark};">${formatCurrency(basePrice)}</td>
+                  <td style="padding: 5px 0; font-size: 14px; color: ${colors.textDark}; text-align: left;">Precio base</td>
+                  <td style="padding: 5px 0; font-size: 14px; color: ${colors.textDark}; text-align: right;">${formatCurrency(basePrice)}</td>
                 </tr>
                 <tr>
-                  <td style="padding: 5px 0; font-size: 14px; color: ${colors.textDark};">Tarifa de servicio (5%)</td>
-                  <td align="right" style="padding: 5px 0; font-size: 14px; color: ${colors.textDark};">${formatCurrency(guestServiceFee)}</td>
+                  <td style="padding: 5px 0; font-size: 14px; color: ${colors.textDark}; text-align: left;">Tarifa de servicio (5%)</td>
+                  <td style="padding: 5px 0; font-size: 14px; color: ${colors.textDark}; text-align: right;">${formatCurrency(guestServiceFee)}</td>
                 </tr>
                 <tr>
-                  <td style="padding: 5px 0; font-size: 14px; color: ${colors.textDark};">IVA (16%)</td>
-                  <td align="right" style="padding: 5px 0; font-size: 14px; color: ${colors.textDark};">${formatCurrency(totalIVA)}</td>
+                  <td style="padding: 5px 0; font-size: 14px; color: ${colors.textDark}; text-align: left;">IVA (16%)</td>
+                  <td style="padding: 5px 0; font-size: 14px; color: ${colors.textDark}; text-align: right;">${formatCurrency(totalIVA)}</td>
                 </tr>
                 <tr>
                   <td colspan="2" style="padding: 10px 0 0 0; border-top: 1px solid #E0E0E0;"></td>
                 </tr>
                 <tr>
-                  <td style="font-size: 16px; font-weight: 700; color: ${colors.dark};">Total pagado</td>
-                  <td align="right" style="font-size: 16px; font-weight: 700; color: ${colors.primary};">${formatCurrency(totalGuestPayment)}</td>
+                  <td style="font-size: 16px; font-weight: 700; color: ${colors.dark}; text-align: left;">Total pagado</td>
+                  <td style="font-size: 16px; font-weight: 700; color: ${colors.primary}; text-align: right;">${formatCurrency(totalGuestPayment)}</td>
                 </tr>
               </table>
             </td>
