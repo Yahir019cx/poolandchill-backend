@@ -172,6 +172,35 @@ export class HostPaymentsService {
   }
 
   /**
+   * Genera un link de Stripe para que el host actualice sus datos (cuenta bancaria, etc.)
+   * en una cuenta Express ya creada. Usa Account Link con type: 'account_update'.
+   * El usuario es redirigido al mismo flujo de Stripe donde puede editar la información.
+   */
+  async getAccountUpdateLink(userId: string): Promise<{ updateUrl: string }> {
+    const row = await this.getStripeAccountByUserId(userId);
+    if (!row?.StripeAccountId) {
+      throw new BadRequestException('El usuario no tiene una cuenta Stripe Connect. Complete primero el onboarding.');
+    }
+    const returnUrl = this.configService.get<string>('STRIPE_RETURN_URL', 'poolandchill://stripe/return');
+    const refreshUrl = this.configService.get<string>('STRIPE_REFRESH_URL', 'poolandchill://stripe/refresh');
+    try {
+      const accountLink = await this.getStripe().accountLinks.create({
+        account: row.StripeAccountId,
+        type: 'account_update',
+        refresh_url: refreshUrl,
+        return_url: returnUrl,
+      });
+      return { updateUrl: accountLink.url };
+    } catch (err: any) {
+      this.logger.error(`Error al crear link de actualización: ${err?.message}`);
+      if (err?.type === 'StripeInvalidRequestError') {
+        throw new BadRequestException(err.message ?? 'Error de Stripe');
+      }
+      throw new InternalServerErrorException('Error al generar link de actualización');
+    }
+  }
+
+  /**
    * Procesa el webhook account.updated: obtiene UserId por StripeAccountId y actualiza en BD.
    */
   async handleAccountUpdated(account: Stripe.Account): Promise<void> {

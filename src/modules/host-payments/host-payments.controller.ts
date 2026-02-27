@@ -64,6 +64,39 @@ export class HostPaymentsController {
     return this.hostPaymentsService.createConnectAccount(userId);
   }
 
+  @Post('connect/account-update-link')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Link para actualizar datos bancarios / cuenta Stripe',
+    description: `
+      Genera una URL de un solo uso para que el host actualice su información
+      en Stripe (cuenta bancaria, datos fiscales, etc.). Solo aplica si ya
+      completó el onboarding. Redirige al mismo flujo de Stripe (return/refresh
+      según STRIPE_RETURN_URL / STRIPE_REFRESH_URL).
+    `,
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'URL para abrir y actualizar datos',
+    schema: {
+      type: 'object',
+      properties: {
+        updateUrl: { type: 'string', description: 'URL de Stripe para actualizar la cuenta' },
+      },
+    },
+  })
+  @ApiResponse({ status: 400, description: 'Usuario sin cuenta Connect' })
+  @ApiResponse({ status: 401, description: 'No autenticado' })
+  async getAccountUpdateLink(@Req() req: any) {
+    const userId = req.user?.userId;
+    if (!userId) {
+      throw new BadRequestException('UserId es requerido');
+    }
+    return this.hostPaymentsService.getAccountUpdateLink(userId);
+  }
+
   @Get('account-status')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('JWT-auth')
