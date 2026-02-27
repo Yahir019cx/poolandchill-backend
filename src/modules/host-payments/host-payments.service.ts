@@ -432,7 +432,6 @@ export class HostPaymentsService {
 
   @Cron(CronExpression.EVERY_HOUR)
   async handlePayoutsCron() {
-    this.logger.log('[PAYOUT CRON] Buscando payouts pendientes...');
     try {
       await this.processPendingPayouts();
     } catch (err: any) {
@@ -448,7 +447,7 @@ export class HostPaymentsService {
     const pendingPayouts = result.recordset ?? [];
 
     if (pendingPayouts.length === 0) {
-      this.logger.log('[PAYOUT CRON] No hay payouts programados');
+     
       return { processed: 0, failed: 0 };
     }
 

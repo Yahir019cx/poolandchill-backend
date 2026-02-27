@@ -97,7 +97,6 @@ export class BookingService {
   // ─────────────────────────────────────────────
 
   async createBooking(dto: CreateBookingDto, guestId: string) {
-    this.logger.log(`[BOOKING] createBooking iniciado — propertyId: ${dto.propertyId}, guestId: ${guestId}`);
 
     const inputs: { name: string; type: any; value: any }[] = [
       { name: 'ID_Property', type: sql.UniqueIdentifier, value: dto.propertyId },
@@ -111,26 +110,26 @@ export class BookingService {
 
     let spRow: any;
     try {
-      this.logger.log(`[BOOKING] Ejecutando ${SP_CREATE_BOOKING}...`);
+      
       const result = await this.databaseService.executeStoredProcedure<any>(
         SP_CREATE_BOOKING,
         inputs,
         [],
       );
       spRow = result.recordset?.[0];
-      this.logger.log(`[BOOKING] SP respuesta — Success: ${spRow?.Success}, BookingCode: ${spRow?.BookingCode}, ID_Booking: ${spRow?.ID_Booking}`);
+      
     } catch (error) {
-      this.logger.error(`[BOOKING] Error en ${SP_CREATE_BOOKING}: ${error.message}`);
+      
       throw new InternalServerErrorException('Error al procesar la reserva');
     }
 
     if (!spRow) {
-      this.logger.error('[BOOKING] SP no devolvió fila');
+      
       throw new InternalServerErrorException('Respuesta inesperada del servidor');
     }
 
     if (spRow.Success !== 1) {
-      this.logger.warn(`[BOOKING] SP rechazó: ${spRow.Message}`);
+     
       throw new BadRequestException(spRow.Message ?? 'No se pudo crear la reserva');
     }
 
@@ -141,7 +140,7 @@ export class BookingService {
     let clientSecret: string;
 
     try {
-      this.logger.log(`[BOOKING] Creando PaymentIntent en Stripe — amount: ${totalGuestPayment} MXN (${amountInCents} centavos), metadata: bookingId=${spRow.ID_Booking}`);
+      
       const stripe = this.getStripe();
       const paymentIntent = await stripe.paymentIntents.create({
         amount: amountInCents,
@@ -155,9 +154,9 @@ export class BookingService {
       });
       paymentIntentId = paymentIntent.id;
       clientSecret = paymentIntent.client_secret!;
-      this.logger.log(`[BOOKING] PaymentIntent creado — id: ${paymentIntentId}, clientSecret: ${clientSecret ? 'SI' : 'NO'}`);
+      
     } catch (error) {
-      this.logger.error(`[BOOKING] Error creando PaymentIntent: ${error.message}`);
+     
       throw new InternalServerErrorException('Error al inicializar el pago. Intenta de nuevo.');
     }
 
@@ -170,7 +169,7 @@ export class BookingService {
       }
     }
 
-    this.logger.log(`[BOOKING] createBooking OK — bookingCode: ${spRow.BookingCode}, paymentIntentId: ${paymentIntentId}`);
+    
     return {
       success: true,
       data: {
