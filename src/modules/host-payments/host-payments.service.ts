@@ -127,11 +127,18 @@ export class HostPaymentsService {
    * Crea una cuenta Express en Stripe Connect, genera el link de onboarding
    * y registra/actualiza el StripeAccountId en BD mediante el SP.
    */
+  /** URLs que Stripe usa al terminar el flujo. Stripe solo acepta https (o http en local). El backend redirige luego al deep link poolandchill:// */
+  private getStripeRedirectUrls(): { returnUrl: string; refreshUrl: string } {
+    const base = this.configService.get<string>('BACKEND_URL', 'http://localhost:3000').replace(/\/$/, '');
+    return {
+      returnUrl: this.configService.get<string>('STRIPE_RETURN_URL') ?? `${base}/stripe/return`,
+      refreshUrl: this.configService.get<string>('STRIPE_REFRESH_URL') ?? `${base}/stripe/refresh`,
+    };
+  }
+
   async createConnectAccount(userId: string): Promise<{ onboardingUrl: string }> {
     const stripe = this.getStripe();
-    // Deep links para app móvil (Flutter). Override con STRIPE_RETURN_URL / STRIPE_REFRESH_URL si usas web.
-    const returnUrl = this.configService.get<string>('STRIPE_RETURN_URL', 'poolandchill://stripe/return');
-    const refreshUrl = this.configService.get<string>('STRIPE_REFRESH_URL', 'poolandchill://stripe/refresh');
+    const { returnUrl, refreshUrl } = this.getStripeRedirectUrls();
 
     try {
       const account = await stripe.accounts.create({
@@ -181,8 +188,7 @@ export class HostPaymentsService {
     if (!row?.StripeAccountId) {
       throw new BadRequestException('El usuario no tiene una cuenta Stripe Connect. Complete primero el onboarding.');
     }
-    const returnUrl = this.configService.get<string>('STRIPE_RETURN_URL', 'poolandchill://stripe/return');
-    const refreshUrl = this.configService.get<string>('STRIPE_REFRESH_URL', 'poolandchill://stripe/refresh');
+    const { returnUrl, refreshUrl } = this.getStripeRedirectUrls();
     try {
       const accountLink = await this.getStripe().accountLinks.create({
         account: row.StripeAccountId,
