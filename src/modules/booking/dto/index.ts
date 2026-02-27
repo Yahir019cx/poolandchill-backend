@@ -5,3 +5,6 @@ export * from './check-in.dto';
 export * from './check-out.dto';
 export * from './calculate-refund.dto';
 export * from './cancel-booking.dto';
+export * from './create-guest-review.dto';
+export * from './create-property-review.dto';
+export * from './create-host-review.dto';

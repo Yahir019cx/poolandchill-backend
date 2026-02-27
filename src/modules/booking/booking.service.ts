@@ -16,18 +16,24 @@ import { CheckInDto } from './dto/check-in.dto';
 import { CheckOutDto } from './dto/check-out.dto';
 import { CalculateRefundDto } from './dto/calculate-refund.dto';
 import { CancelBookingDto } from './dto/cancel-booking.dto';
+import { CreateGuestReviewDto } from './dto/create-guest-review.dto';
+import { CreatePropertyReviewDto } from './dto/create-property-review.dto';
+import { CreateHostReviewDto } from './dto/create-host-review.dto';
 import { BookingEmailService } from './booking-email.service';
 
-const SP_CHECK_AVAILABILITY  = '[booking].[xsp_CheckAvailability]';
-const SP_CREATE_BOOKING      = '[booking].[xsp_CreateBooking]';
-const SP_CONFIRM_PAYMENT     = '[booking].[xsp_ConfirmPayment]';
-const SP_RECORD_PAYMENT      = '[payment].[xsp_RecordPayment]';
-const SP_CHECK_IN            = '[booking].[xsp_CheckIn]';
-const SP_CHECK_OUT           = '[booking].[xsp_CheckOut]';
-const SP_CALCULATE_REFUND    = '[booking].[xsp_CalculateRefund]';
-const SP_CANCEL_BOOKING      = '[booking].[xsp_CancelBooking]';
-const SP_GET_HOST_BOOKINGS   = '[booking].[xsp_GetHostBookings]';
-const SP_GET_GUEST_BOOKINGS  = '[booking].[xsp_GetGuestBookings]';
+const SP_CHECK_AVAILABILITY   = '[booking].[xsp_CheckAvailability]';
+const SP_CREATE_BOOKING       = '[booking].[xsp_CreateBooking]';
+const SP_CONFIRM_PAYMENT      = '[booking].[xsp_ConfirmPayment]';
+const SP_RECORD_PAYMENT       = '[payment].[xsp_RecordPayment]';
+const SP_CHECK_IN             = '[booking].[xsp_CheckIn]';
+const SP_CHECK_OUT            = '[booking].[xsp_CheckOut]';
+const SP_CALCULATE_REFUND     = '[booking].[xsp_CalculateRefund]';
+const SP_CANCEL_BOOKING       = '[booking].[xsp_CancelBooking]';
+const SP_GET_HOST_BOOKINGS    = '[booking].[xsp_GetHostBookings]';
+const SP_GET_GUEST_BOOKINGS        = '[booking].[xsp_GetGuestBookings]';
+const SP_CREATE_GUEST_REVIEW      = '[review].[xsp_CreateGuestReview]';
+const SP_CREATE_PROPERTY_REVIEW   = '[review].[xsp_CreatePropertyReview]';
+const SP_CREATE_HOST_REVIEW       = '[review].[xsp_CreateHostReview]';
 
 export interface StripePaymentData {
   paymentIntentId: string;
@@ -389,6 +395,209 @@ export class BookingService {
       if (error instanceof InternalServerErrorException) throw error;
       this.logger.error(`Error en ${SP_CHECK_OUT}: ${error.message}`);
       throw new InternalServerErrorException('Error al procesar el check-out');
+    }
+  }
+
+  // ─────────────────────────────────────────────
+  // CREAR RESEÑA DEL HUÉSPED (Host califica al guest)
+  // ─────────────────────────────────────────────
+
+  async createGuestReview(dto: CreateGuestReviewDto, hostId: string) {
+    try {
+      const result = await this.databaseService.executeStoredProcedure<any>(
+        SP_CREATE_GUEST_REVIEW,
+        [
+          { name: 'ID_Booking', type: sql.UniqueIdentifier, value: dto.bookingId },
+          { name: 'ID_Host', type: sql.UniqueIdentifier, value: hostId },
+          { name: 'Rating', type: sql.Decimal(2, 1), value: dto.rating },
+          {
+            name: 'CleanlinessRating',
+            type: sql.Decimal(2, 1),
+            value: dto.cleanlinessRating,
+          },
+          {
+            name: 'CommunicationRating',
+            type: sql.Decimal(2, 1),
+            value: dto.communicationRating,
+          },
+          {
+            name: 'RespectRulesRating',
+            type: sql.Decimal(2, 1),
+            value: dto.respectRulesRating,
+          },
+          {
+            name: 'Comment',
+            type: sql.NVarChar(1000),
+            value: dto.comment ?? null,
+          },
+          {
+            name: 'WouldHostAgain',
+            type: sql.Bit,
+            value: dto.wouldHostAgain,
+          },
+        ],
+        [],
+      );
+
+      const row = result.recordset?.[0];
+      if (!row) {
+        throw new InternalServerErrorException('Respuesta inesperada del servidor');
+      }
+
+      if (row.Success !== 1) {
+        throw new BadRequestException(
+          row.Message ?? 'No se pudo crear la reseña del huésped',
+        );
+      }
+
+      return {
+        success: true,
+        data: {
+          message: row.Message ?? 'Review creada correctamente.',
+        },
+      };
+    } catch (error) {
+      if (error instanceof BadRequestException) throw error;
+      if (error instanceof InternalServerErrorException) throw error;
+      this.logger.error(`Error en ${SP_CREATE_GUEST_REVIEW}: ${error.message}`);
+      throw new InternalServerErrorException('Error al crear la reseña del huésped');
+    }
+  }
+
+  // ─────────────────────────────────────────────
+  // CREAR RESEÑA DE LA PROPIEDAD (Guest califica propiedad)
+  // ─────────────────────────────────────────────
+
+  async createPropertyReview(dto: CreatePropertyReviewDto, guestId: string) {
+    try {
+      const result = await this.databaseService.executeStoredProcedure<any>(
+        SP_CREATE_PROPERTY_REVIEW,
+        [
+          { name: 'ID_Booking', type: sql.UniqueIdentifier, value: dto.bookingId },
+          { name: 'ID_Guest', type: sql.UniqueIdentifier, value: guestId },
+          { name: 'OverallRating', type: sql.Decimal(2, 1), value: dto.overallRating },
+          {
+            name: 'CleanlinessRating',
+            type: sql.Decimal(2, 1),
+            value: dto.cleanlinessRating,
+          },
+          {
+            name: 'AccuracyRating',
+            type: sql.Decimal(2, 1),
+            value: dto.accuracyRating,
+          },
+          {
+            name: 'CommunicationRating',
+            type: sql.Decimal(2, 1),
+            value: dto.communicationRating,
+          },
+          {
+            name: 'LocationRating',
+            type: sql.Decimal(2, 1),
+            value: dto.locationRating,
+          },
+          {
+            name: 'ValueRating',
+            type: sql.Decimal(2, 1),
+            value: dto.valueRating,
+          },
+          {
+            name: 'Comment',
+            type: sql.NVarChar(2000),
+            value: dto.comment ?? null,
+          },
+        ],
+        [],
+      );
+
+      const row = result.recordset?.[0];
+      if (!row) {
+        throw new InternalServerErrorException('Respuesta inesperada del servidor');
+      }
+
+      if (row.Success !== 1) {
+        throw new BadRequestException(
+          row.Message ?? 'No se pudo crear la reseña de la propiedad',
+        );
+      }
+
+      return {
+        success: true,
+        data: {
+          message: row.Message ?? 'Review de propiedad creada correctamente.',
+        },
+      };
+    } catch (error) {
+      if (error instanceof BadRequestException) throw error;
+      if (error instanceof InternalServerErrorException) throw error;
+      this.logger.error(`Error en ${SP_CREATE_PROPERTY_REVIEW}: ${error.message}`);
+      throw new InternalServerErrorException('Error al crear la reseña de la propiedad');
+    }
+  }
+
+  // ─────────────────────────────────────────────
+  // CREAR RESEÑA DEL HOST (Guest califica al host)
+  // ─────────────────────────────────────────────
+
+  async createHostReview(dto: CreateHostReviewDto, guestId: string) {
+    try {
+      const result = await this.databaseService.executeStoredProcedure<any>(
+        SP_CREATE_HOST_REVIEW,
+        [
+          { name: 'ID_Booking', type: sql.UniqueIdentifier, value: dto.bookingId },
+          { name: 'ID_Guest', type: sql.UniqueIdentifier, value: guestId },
+          { name: 'OverallRating', type: sql.Decimal(2, 1), value: dto.overallRating },
+          {
+            name: 'CommunicationRating',
+            type: sql.Decimal(2, 1),
+            value: dto.communicationRating,
+          },
+          {
+            name: 'CleanlinessRating',
+            type: sql.Decimal(2, 1),
+            value: dto.cleanlinessRating,
+          },
+          {
+            name: 'AccuracyRating',
+            type: sql.Decimal(2, 1),
+            value: dto.accuracyRating,
+          },
+          {
+            name: 'CheckInRating',
+            type: sql.Decimal(2, 1),
+            value: dto.checkInRating,
+          },
+          {
+            name: 'Comment',
+            type: sql.NVarChar(2000),
+            value: dto.comment ?? null,
+          },
+        ],
+        [],
+      );
+
+      const row = result.recordset?.[0];
+      if (!row) {
+        throw new InternalServerErrorException('Respuesta inesperada del servidor');
+      }
+
+      if (row.Success !== 1) {
+        throw new BadRequestException(
+          row.Message ?? 'No se pudo crear la reseña del host',
+        );
+      }
+
+      return {
+        success: true,
+        data: {
+          message: row.Message ?? 'Review del host creada correctamente.',
+        },
+      };
+    } catch (error) {
+      if (error instanceof BadRequestException) throw error;
+      if (error instanceof InternalServerErrorException) throw error;
+      this.logger.error(`Error en ${SP_CREATE_HOST_REVIEW}: ${error.message}`);
+      throw new InternalServerErrorException('Error al crear la reseña del host');
     }
   }
 

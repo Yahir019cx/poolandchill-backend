@@ -9,6 +9,7 @@ export class PropertiesSearchService {
   constructor(private readonly databaseService: DatabaseService) {}
 
   async searchProperties(dto: SearchPropertiesDto) {
+                                                                                                                                                                                                                                                                                                                
     const hasPoolValue = dto.hasPool === true ? true : null;
     const hasCabinValue = dto.hasCabin === true ? true : null;
     const hasCampingValue = dto.hasCamping === true ? true : null;
