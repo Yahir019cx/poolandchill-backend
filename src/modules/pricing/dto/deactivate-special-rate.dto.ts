@@ -3,10 +3,11 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class DeactivateSpecialRateDto {
   @ApiProperty({
-    description: 'ID de la tarifa especial a desactivar',
+    description:
+      'ID de la tarifa especial a desactivar (usar el idSpecialRate devuelto al crear o el del calendario)',
     example: '0D3C1077-9189-4544-A51A-B4696D6B6799',
   })
-  @IsUUID('4')
+  @IsUUID('4', { message: 'El ID de la tarifa especial es inválido o no se proporcionó.' })
   idSpecialRate: string;
 
   @ApiPropertyOptional({

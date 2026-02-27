@@ -44,6 +44,8 @@ export class PricingSpecialRateService {
       throw new BadRequestException(message);
     }
 
+    // Invalidar caché del calendario para que la lista/calendario refleje la nueva tarifa de inmediato.
+    // El cliente debe usar data.idSpecialRate de esta respuesta para desactivar la tarifa sin esperar a refetch.
     this.bookingService.invalidateCalendarCache(dto.idProperty);
 
     return {
@@ -61,6 +63,7 @@ export class PricingSpecialRateService {
 
   /**
    * Desactiva una tarifa especial. Solo el propietario de la propiedad puede desactivar.
+   * idSpecialRate debe ser el UUID devuelto al crear la tarifa (o el que viene en el calendario).
    * Si dto.propertyId viene (o el SP devuelve ID_Property), se invalida la caché del calendario.
    */
   async deactivateSpecialRate(userId: string, dto: DeactivateSpecialRateDto) {
