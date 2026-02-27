@@ -33,6 +33,7 @@ export interface UserProfile {
   gender: number | null;
   /** 0=No es host, 1=Nuevo host (debe ver onboarding), 2=Onboarding completado */
   isHostOnboarded: number;
+  location: string | null;
   roles: string[];
   hasPassword: boolean;
   linkedProviders: string[];
@@ -162,6 +163,7 @@ export class UsersService {
         dateOfBirth: userData.DateOfBirth || null,
         gender: userData.Gender || null,
         isHostOnboarded: userData.IsHostOnboarded ?? 0,
+        location: userData.Location || null,
         roles: userData.Roles
           ? userData.Roles.split(',').filter(Boolean)
           : ['guest'],
