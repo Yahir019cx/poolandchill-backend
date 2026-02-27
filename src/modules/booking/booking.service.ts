@@ -660,6 +660,11 @@ export class BookingService {
             average: b.PropertyAvgRating,
             totalReviews: b.PropertyTotalReviews,
           },
+          // Rating promedio general del guest (mismo valor en todas las filas)
+          guestRating: {
+            average: b.GuestAvgRating,
+            totalReviews: b.GuestTotalReviews,
+          },
           host: {
             hostId: b.ID_Owner,
             displayName: b.HostDisplayName,
