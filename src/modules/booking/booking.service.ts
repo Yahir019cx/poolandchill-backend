@@ -18,14 +18,16 @@ import { CalculateRefundDto } from './dto/calculate-refund.dto';
 import { CancelBookingDto } from './dto/cancel-booking.dto';
 import { BookingEmailService } from './booking-email.service';
 
-const SP_CHECK_AVAILABILITY = '[booking].[xsp_CheckAvailability]';
-const SP_CREATE_BOOKING    = '[booking].[xsp_CreateBooking]';
-const SP_CONFIRM_PAYMENT   = '[booking].[xsp_ConfirmPayment]';
-const SP_RECORD_PAYMENT    = '[payment].[xsp_RecordPayment]';
-const SP_CHECK_IN          = '[booking].[xsp_CheckIn]';
-const SP_CHECK_OUT         = '[booking].[xsp_CheckOut]';
-const SP_CALCULATE_REFUND  = '[booking].[xsp_CalculateRefund]';
-const SP_CANCEL_BOOKING    = '[booking].[xsp_CancelBooking]';
+const SP_CHECK_AVAILABILITY  = '[booking].[xsp_CheckAvailability]';
+const SP_CREATE_BOOKING      = '[booking].[xsp_CreateBooking]';
+const SP_CONFIRM_PAYMENT     = '[booking].[xsp_ConfirmPayment]';
+const SP_RECORD_PAYMENT      = '[payment].[xsp_RecordPayment]';
+const SP_CHECK_IN            = '[booking].[xsp_CheckIn]';
+const SP_CHECK_OUT           = '[booking].[xsp_CheckOut]';
+const SP_CALCULATE_REFUND    = '[booking].[xsp_CalculateRefund]';
+const SP_CANCEL_BOOKING      = '[booking].[xsp_CancelBooking]';
+const SP_GET_HOST_BOOKINGS   = '[booking].[xsp_GetHostBookings]';
+const SP_GET_GUEST_BOOKINGS  = '[booking].[xsp_GetGuestBookings]';
 
 export interface StripePaymentData {
   paymentIntentId: string;
@@ -501,6 +503,175 @@ export class BookingService {
         stripeRefundId,
         policyDescription: spRow.PolicyDescription,
         message: spRow.Message,
+      },
+    };
+  }
+
+  // ─────────────────────────────────────────────
+  // LISTAR RESERVAS DEL HOST AUTENTICADO
+  // ─────────────────────────────────────────────
+
+  async getHostBookings(hostId: string) {
+    const pool = await this.databaseService.getConnection();
+    const request = pool.request();
+
+    request.input('ID_Owner', sql.UniqueIdentifier, hostId);
+
+    const result = await request.execute(SP_GET_HOST_BOOKINGS);
+    const recordsets = result.recordsets as any[];
+
+    const firstRow = recordsets[0]?.[0];
+
+    // Caso: el SP devuelve solo ErrorMessage (sin reservas)
+    if (firstRow?.ErrorMessage) {
+      return {
+        success: true,
+        data: {
+          summary: {
+            totalBookings: 0,
+            totalProximas: 0,
+            totalPasadas: 0,
+            totalCanceladas: 0,
+            totalNoShow: 0,
+          },
+          bookings: [],
+          message: firstRow.ErrorMessage,
+        },
+      };
+    }
+
+    const summaryRow = firstRow;
+    const bookingRows = recordsets[1] || [];
+
+    return {
+      success: true,
+      data: {
+        summary: {
+          totalBookings: Number(summaryRow.TotalBookings) || 0,
+          totalProximas: Number(summaryRow.TotalProximas) || 0,
+          totalPasadas: Number(summaryRow.TotalPasadas) || 0,
+          totalCanceladas: Number(summaryRow.TotalCanceladas) || 0,
+          totalNoShow: Number(summaryRow.TotalNoShow) || 0,
+        },
+        bookings: bookingRows.map((b: any) => ({
+          bookingId: b.ID_Booking,
+          bookingCode: b.BookingCode,
+          bookingType: b.BookingType,
+          bookingDate: b.BookingDate,
+          bookingStartTime: b.BookingStartTime,
+          bookingEndTime: b.BookingEndTime,
+          checkInDate: b.CheckInDate,
+          checkOutDate: b.CheckOutDate,
+          numberOfNights: b.NumberOfNights,
+          propertyId: b.ID_Property,
+          propertyName: b.PropertyName,
+          propertyRating: {
+            average: b.AvgPropertyRating,
+            totalReviews: b.TotalPropertyReviews,
+          },
+          guest: {
+            guestId: b.ID_Guest,
+            displayName: b.GuestDisplayName,
+            profileImageUrl: b.GuestProfileImageUrl,
+            rating: {
+              average: b.AvgGuestRating,
+              totalReviews: b.TotalGuestReviews,
+            },
+          },
+          totalGuestPayment: Number(b.TotalGuestPayment),
+          status: {
+            id: b.ID_Status,
+            name: b.StatusName,
+          },
+          payout: {
+            hostPayout: b.HostPayout,
+            payoutStatus: b.PayoutStatus,
+          },
+          hostRating: {
+            average: b.AvgHostRating,
+            totalReviews: b.TotalHostReviews,
+          },
+        })),
+      },
+    };
+  }
+
+  // ─────────────────────────────────────────────
+  // LISTAR RESERVAS DEL GUEST AUTENTICADO
+  // ─────────────────────────────────────────────
+
+  async getGuestBookings(guestId: string) {
+    const pool = await this.databaseService.getConnection();
+    const request = pool.request();
+
+    request.input('ID_Guest', sql.UniqueIdentifier, guestId);
+
+    const result = await request.execute(SP_GET_GUEST_BOOKINGS);
+    const recordsets = result.recordsets as any[];
+
+    const firstRow = recordsets[0]?.[0];
+
+    // Caso: el SP devuelve solo ErrorMessage (sin reservas)
+    if (firstRow?.ErrorMessage) {
+      return {
+        success: true,
+        data: {
+          summary: {
+            totalBookings: 0,
+            totalProximas: 0,
+            totalPasadas: 0,
+            totalCanceladas: 0,
+            totalNoShow: 0,
+          },
+          bookings: [],
+          message: firstRow.ErrorMessage,
+        },
+      };
+    }
+
+    const summaryRow = firstRow;
+    const bookingRows = recordsets[1] || [];
+
+    return {
+      success: true,
+      data: {
+        summary: {
+          totalBookings: Number(summaryRow.TotalBookings) || 0,
+          totalProximas: Number(summaryRow.TotalProximas) || 0,
+          totalPasadas: Number(summaryRow.TotalPasadas) || 0,
+          totalCanceladas: Number(summaryRow.TotalCanceladas) || 0,
+          totalNoShow: Number(summaryRow.TotalNoShow) || 0,
+        },
+        bookings: bookingRows.map((b: any) => ({
+          bookingId: b.ID_Booking,
+          bookingCode: b.BookingCode,
+          bookingType: b.BookingType,
+          bookingDate: b.BookingDate,
+          bookingStartTime: b.BookingStartTime,
+          bookingEndTime: b.BookingEndTime,
+          checkInDate: b.CheckInDate,
+          checkOutDate: b.CheckOutDate,
+          numberOfNights: b.NumberOfNights,
+          qrCodeData: b.QRCodeData,
+          propertyId: b.ID_Property,
+          propertyName: b.PropertyName,
+          propertyImageUrl: b.PropertyImageUrl,
+          propertyRating: {
+            average: b.PropertyAvgRating,
+            totalReviews: b.PropertyTotalReviews,
+          },
+          host: {
+            hostId: b.ID_Owner,
+            displayName: b.HostDisplayName,
+            profileImageUrl: b.HostProfileImageUrl,
+            isIdentityVerified: Boolean(b.IsIdentityVerified),
+          },
+          totalGuestPayment: Number(b.TotalGuestPayment),
+          status: {
+            id: b.ID_Status,
+            name: b.StatusName,
+          },
+        })),
       },
     };
   }

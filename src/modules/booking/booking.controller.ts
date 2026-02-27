@@ -325,6 +325,44 @@ export class BookingController {
     return this.bookingService.cancelBooking(dto, userId);
   }
 
+  @Post('host/bookings')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 20, ttl: 60000 } })
+  @ApiOperation({
+    summary: 'Listar reservas del host autenticado',
+    description: `
+      Devuelve el resumen y listado de reservas del host autenticado.
+      El ID_Owner se toma del JWT (userId), no del body.
+    `,
+  })
+  @ApiResponse({ status: 200, description: 'Listado de reservas del host' })
+  @ApiResponse({ status: 401, description: 'No autenticado' })
+  async getHostBookings(@Req() req: any) {
+    const hostId: string = req.user?.userId;
+    return this.bookingService.getHostBookings(hostId);
+  }
+
+  @Post('guest/bookings')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 20, ttl: 60000 } })
+  @ApiOperation({
+    summary: 'Listar reservas del guest autenticado',
+    description: `
+      Devuelve el resumen y listado de reservas del huésped autenticado.
+      El ID_Guest se toma del JWT (userId), no del body.
+    `,
+  })
+  @ApiResponse({ status: 200, description: 'Listado de reservas del guest' })
+  @ApiResponse({ status: 401, description: 'No autenticado' })
+  async getGuestBookings(@Req() req: any) {
+    const guestId: string = req.user?.userId;
+    return this.bookingService.getGuestBookings(guestId);
+  }
+
   @Post('calendar')
   @HttpCode(HttpStatus.OK)
   @Throttle({ default: { limit: 20, ttl: 60000 } })
