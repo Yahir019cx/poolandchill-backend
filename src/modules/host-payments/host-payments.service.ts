@@ -180,8 +180,9 @@ export class HostPaymentsService {
 
   /**
    * Genera un link de Stripe para que el host actualice sus datos (cuenta bancaria, etc.)
-   * en una cuenta Express ya creada. Usa Account Link con type: 'account_update'.
-   * El usuario es redirigido al mismo flujo de Stripe donde puede editar la información.
+   * en una cuenta Express ya creada. Intenta type: 'account_update'; si Stripe solo permite
+   * 'account_onboarding' (cuenta incompleta en Stripe), usa onboarding para que el usuario
+   * complete o actualice la información igualmente.
    */
   async getAccountUpdateLink(userId: string): Promise<{ updateUrl: string }> {
     const row = await this.getStripeAccountByUserId(userId);
@@ -189,15 +190,30 @@ export class HostPaymentsService {
       throw new BadRequestException('El usuario no tiene una cuenta Stripe Connect. Complete primero el onboarding.');
     }
     const { returnUrl, refreshUrl } = this.getStripeRedirectUrls();
+    const stripe = this.getStripe();
+    const params = { account: row.StripeAccountId, refresh_url: refreshUrl, return_url: returnUrl };
+
     try {
-      const accountLink = await this.getStripe().accountLinks.create({
-        account: row.StripeAccountId,
+      const accountLink = await stripe.accountLinks.create({
+        ...params,
         type: 'account_update',
-        refresh_url: refreshUrl,
-        return_url: returnUrl,
       });
       return { updateUrl: accountLink.url };
     } catch (err: any) {
+      const onlyOnboarding =
+        err?.type === 'StripeInvalidRequestError' &&
+        typeof err?.message === 'string' &&
+        err.message.includes('account_onboarding');
+      if (onlyOnboarding) {
+        this.logger.log(
+          `[getAccountUpdateLink] Cuenta ${row.StripeAccountId} solo permite onboarding; generando link account_onboarding`,
+        );
+        const accountLink = await stripe.accountLinks.create({
+          ...params,
+          type: 'account_onboarding',
+        });
+        return { updateUrl: accountLink.url };
+      }
       this.logger.error(`Error al crear link de actualización: ${err?.message}`);
       if (err?.type === 'StripeInvalidRequestError') {
         throw new BadRequestException(err.message ?? 'Error de Stripe');
