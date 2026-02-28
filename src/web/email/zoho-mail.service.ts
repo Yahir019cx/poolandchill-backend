@@ -1,39 +1,26 @@
 import { Injectable, Logger } from '@nestjs/common';
-import * as nodemailer from 'nodemailer';
-import type { Transporter } from 'nodemailer';
-
-type MailAttachment = NonNullable<nodemailer.SendMailOptions['attachments']>[number];
+import { Resend } from 'resend';
 
 @Injectable()
 export class ZohoMailService {
   private readonly logger = new Logger(ZohoMailService.name);
-  private transporter: Transporter;
+  private readonly resend: Resend;
+  private readonly from: string;
 
   constructor() {
-    const host = process.env.ZOHO_SMTP_HOST || 'smtp.zoho.com';
-    const port = parseInt(process.env.ZOHO_SMTP_PORT || '587', 10);
-    const user = process.env.ZOHO_SMTP_USER;
-    const pass = process.env.ZOHO_SMTP_PASS;
+    const apiKey = process.env.ResendApi;
 
-    if (!user || !pass) {
+    if (!apiKey) {
       this.logger.error(
-        'Variables de entorno de Zoho SMTP no configuradas. ' +
-        'Asegúrate de configurar ZOHO_SMTP_USER y ZOHO_SMTP_PASS'
+        'Variable de entorno ResendApi no configurada.',
       );
       throw new Error(
-        'Zoho SMTP credentials not configured. Please set ZOHO_SMTP_USER and ZOHO_SMTP_PASS environment variables.'
+        'Resend API key not configured. Please set ResendApi environment variable.',
       );
     }
 
-    this.transporter = nodemailer.createTransport({
-      host,
-      port,
-      secure: false,
-      auth: {
-        user,
-        pass,
-      },
-    });
+    this.resend = new Resend(apiKey);
+    this.from = 'Pool & Chill <no-reply@poolandchill.com.mx>';
   }
 
   async sendMail(
@@ -43,46 +30,43 @@ export class ZohoMailService {
     attachments?: Array<{ name: string; contentBytes: string; contentType: string }>,
     inlineImages?: Array<{ cid: string; buffer: Buffer; contentType: string; filename: string }>,
   ): Promise<{ ok: boolean; to: string; attachmentsCount: number }> {
-    const from = process.env.MAIL_FROM || process.env.ZOHO_SMTP_USER;
-    const fromName = process.env.MAIL_FROM_NAME || 'Pool & Chill';
+    const resendAttachments: Array<{ filename: string; content: Buffer }> = [];
 
-    const allAttachments: MailAttachment[] = [];
-
-    if (attachments && attachments.length > 0) {
+    if (attachments?.length) {
       for (const att of attachments) {
-        allAttachments.push({
+        resendAttachments.push({
           filename: att.name,
           content: Buffer.from(att.contentBytes, 'base64'),
-          contentType: att.contentType,
         });
       }
     }
 
-    if (inlineImages && inlineImages.length > 0) {
+    if (inlineImages?.length) {
       for (const img of inlineImages) {
-        allAttachments.push({
+        resendAttachments.push({
           filename: img.filename,
           content: img.buffer,
-          contentType: img.contentType,
-          cid: img.cid,
         });
       }
     }
 
-    const mailOptions: nodemailer.SendMailOptions = {
-      from: `"${fromName}" <${from}>`,
-      to,
-      subject,
-      html: htmlBody,
-      attachments: allAttachments.length > 0 ? allAttachments : undefined,
-    };
-
     try {
-      await this.transporter.sendMail(mailOptions);
-      return { ok: true, to, attachmentsCount: allAttachments.length };
-    } catch (error) {
-      this.logger.error(`Error al enviar email a ${to}: ${error.message}`, error.stack);
-      throw error;
+      const { error } = await this.resend.emails.send({
+        from: this.from,
+        to,
+        subject,
+        html: htmlBody,
+        attachments: resendAttachments.length > 0 ? resendAttachments : undefined,
+      });
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      return { ok: true, to, attachmentsCount: resendAttachments.length };
+    } catch (err) {
+      this.logger.error(`Error al enviar email a ${to}: ${err.message}`, err.stack);
+      throw err;
     }
   }
 }

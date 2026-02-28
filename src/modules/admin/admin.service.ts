@@ -210,7 +210,7 @@ export class AdminService {
   async sendBulkBetaInvite(emails: string[]) {
     const html = appBetaInviteTemplate();
     const subject = 'Te invitamos a probar Pool & Chill';
-    const delayMs = 8000; // 8s entre emails para evitar rate limit de Zoho
+    const delayMs = 1000; // 1s entre emails para envío secuencial
 
     const results: { email: string; ok: boolean; error?: string }[] = [];
 

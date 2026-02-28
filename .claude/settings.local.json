@@ -4,7 +4,11 @@
       "Bash(node -e \":*)",
       "Bash(pnpm add jose)",
       "Bash(pnpm run build)",
-      "Bash(npx tsc --noEmit)"
+      "Bash(npx tsc --noEmit)",
+      "WebFetch(domain:help.zoho.com)",
+      "WebFetch(domain:support.nylas.com)",
+      "Bash(pnpm add resend)",
+      "Bash(pnpm remove nodemailer @types/nodemailer)"
     ]
   }
 }
