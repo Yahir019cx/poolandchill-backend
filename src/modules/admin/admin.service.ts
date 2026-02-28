@@ -210,17 +210,24 @@ export class AdminService {
   async sendBulkBetaInvite(emails: string[]) {
     const html = appBetaInviteTemplate();
     const subject = 'Te invitamos a probar Pool & Chill';
+    const delayMs = 8000; // 8s entre emails para evitar rate limit de Zoho
 
     const results: { email: string; ok: boolean; error?: string }[] = [];
 
-    for (const email of emails) {
+    for (let i = 0; i < emails.length; i++) {
+      const email = emails[i];
       try {
         await this.zohoMailService.sendMail(email, subject, html);
         results.push({ email, ok: true });
-        this.logger.log(`Beta invite enviado a ${email}`);
+        this.logger.log(`Beta invite enviado a ${email} (${i + 1}/${emails.length})`);
       } catch (err) {
         results.push({ email, ok: false, error: err.message });
         this.logger.error(`Error enviando beta invite a ${email}: ${err.message}`);
+      }
+
+      // Esperar entre envíos para no disparar rate limit
+      if (i < emails.length - 1) {
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
       }
     }
 
