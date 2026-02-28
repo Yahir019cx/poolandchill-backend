@@ -77,6 +77,14 @@ export class SearchPropertiesDto {
   @IsString()
   sortBy?: string;
 
+  @ApiPropertyOptional({
+    description: 'Solo propiedades con reservas (populares)',
+  })
+  @IsOptional()
+  @Transform(({ value }) => (value === undefined ? undefined : value === 'true' || value === true))
+  @IsBoolean()
+  popular?: boolean;
+
   @ApiPropertyOptional({ description: 'Número de página', default: 1 })
   @IsOptional()
   @Transform(({ value }) => (value ? parseInt(value) : undefined))

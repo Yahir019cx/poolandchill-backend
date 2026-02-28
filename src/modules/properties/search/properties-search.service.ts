@@ -23,6 +23,7 @@ export class PropertiesSearchService {
     const hasPoolValue = dto.hasPool === true ? true : null;
     const hasCabinValue = dto.hasCabin === true ? true : null;
     const hasCampingValue = dto.hasCamping === true ? true : null;
+    const popularOnlyValue = dto.popular === true ? true : null;
 
     const result = await this.databaseService.executeStoredProcedure(
       '[property].[xsp_SearchProperties]',
@@ -30,6 +31,7 @@ export class PropertiesSearchService {
         { name: 'HasPool', type: sql.Bit, value: hasPoolValue },
         { name: 'HasCabin', type: sql.Bit, value: hasCabinValue },
         { name: 'HasCamping', type: sql.Bit, value: hasCampingValue },
+        { name: 'PopularOnly', type: sql.Bit, value: popularOnlyValue },
         { name: 'ID_State', type: sql.TinyInt, value: dto.stateId ?? null },
         { name: 'ID_City', type: sql.Int, value: dto.cityId ?? null },
         { name: 'MinPrice', type: sql.Decimal(10, 2), value: dto.minPrice ?? null },

@@ -14,5 +14,6 @@ export function mapPropertyToCard(p: any) {
     images: p.Images ? JSON.parse(p.Images) : [],
     rating: p.Rating === 0 || p.Rating === null ? 'Nuevo' : p.Rating,
     reviewCount: p.ReviewCount ?? 0,
+    totalBookings: p.TotalBookings ?? 0,
   };
 }
