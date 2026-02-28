@@ -11,15 +11,19 @@ export class PropertiesSearchController {
   @Get('search')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: 'Buscar propiedades',
+    summary: 'Buscar propiedades (paginado)',
     description: `
       Busca propiedades con filtros. Endpoint público.
       Si no se envían filtros, retorna todas las propiedades activas paginadas.
+
+      **Load more / scroll infinito:** envía \`page\` y \`pageSize\` por query.
+      Primera carga: \`?page=1&pageSize=20\`. Al cargar más: \`?page=2&pageSize=20\`.
+      Concatena \`data.properties\` y usa \`data.hasMore\` para saber si hay más.
     `,
   })
   @ApiResponse({
     status: 200,
-    description: 'Lista de propiedades',
+    description: 'Lista de propiedades con paginación',
     schema: {
       type: 'object',
       properties: {
@@ -30,6 +34,7 @@ export class PropertiesSearchController {
             totalCount: { type: 'number', example: 100 },
             page: { type: 'number', example: 1 },
             pageSize: { type: 'number', example: 20 },
+            hasMore: { type: 'boolean', example: true },
             properties: { type: 'array', items: { type: 'object' } },
           },
         },

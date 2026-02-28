@@ -8,3 +8,4 @@ export * from './cancel-booking.dto';
 export * from './create-guest-review.dto';
 export * from './create-property-review.dto';
 export * from './create-host-review.dto';
+export * from './list-bookings.dto';

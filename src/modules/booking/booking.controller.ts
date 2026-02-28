@@ -17,6 +17,7 @@ import { Throttle } from '@nestjs/throttler';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { BookingService } from './booking.service';
 import { CreateBookingDto } from './dto/create-booking.dto';
+import { ListBookingsDto } from './dto/list-bookings.dto';
 
 @ApiTags('Booking - Reservas & listado')
 @Controller('booking')
@@ -115,17 +116,21 @@ export class BookingController {
   @HttpCode(HttpStatus.OK)
   @Throttle({ default: { limit: 20, ttl: 60000 } })
   @ApiOperation({
-    summary: 'Listar reservas del host autenticado',
+    summary: 'Listar reservas del host autenticado (paginado)',
     description: `
-      Devuelve el resumen y listado de reservas del host autenticado.
-      El ID_Owner se toma del JWT (userId), no del body.
+      Devuelve el resumen y una página de reservas del host autenticado.
+      El ID_Owner se toma del JWT (userId).
+
+      **Load more / scroll infinito:** envía \`page\` y \`pageSize\` en el body.
+      Primera carga: \`{ "page": 1, "pageSize": 20 }\`. Al cargar más: \`{ "page": 2, "pageSize": 20 }\`.
+      El front concatena \`data.bookings\` y usa \`data.pagination.hasMore\` para saber si hay más.
     `,
   })
-  @ApiResponse({ status: 200, description: 'Listado de reservas del host' })
+  @ApiResponse({ status: 200, description: 'Listado de reservas del host con pagination' })
   @ApiResponse({ status: 401, description: 'No autenticado' })
-  async getHostBookings(@Req() req: any) {
+  async getHostBookings(@Req() req: any, @Body() dto?: ListBookingsDto) {
     const hostId: string = req.user?.userId;
-    return this.bookingService.getHostBookings(hostId);
+    return this.bookingService.getHostBookings(hostId, dto);
   }
 
   @Post('guest/bookings')
@@ -134,16 +139,20 @@ export class BookingController {
   @HttpCode(HttpStatus.OK)
   @Throttle({ default: { limit: 20, ttl: 60000 } })
   @ApiOperation({
-    summary: 'Listar reservas del guest autenticado',
+    summary: 'Listar reservas del guest autenticado (paginado)',
     description: `
-      Devuelve el resumen y listado de reservas del huésped autenticado.
-      El ID_Guest se toma del JWT (userId), no del body.
+      Devuelve el resumen y una página de reservas del huésped autenticado.
+      El ID_Guest se toma del JWT (userId).
+
+      **Load more / scroll infinito:** envía \`page\` y \`pageSize\` en el body.
+      Primera carga: \`{ "page": 1, "pageSize": 20 }\`. Al cargar más: \`{ "page": 2, "pageSize": 20 }\`.
+      El front concatena \`data.bookings\` y usa \`data.pagination.hasMore\` para saber si hay más.
     `,
   })
-  @ApiResponse({ status: 200, description: 'Listado de reservas del guest' })
+  @ApiResponse({ status: 200, description: 'Listado de reservas del guest con pagination' })
   @ApiResponse({ status: 401, description: 'No autenticado' })
-  async getGuestBookings(@Req() req: any) {
+  async getGuestBookings(@Req() req: any, @Body() dto?: ListBookingsDto) {
     const guestId: string = req.user?.userId;
-    return this.bookingService.getGuestBookings(guestId);
+    return this.bookingService.getGuestBookings(guestId, dto);
   }
 }

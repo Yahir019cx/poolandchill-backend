@@ -19,6 +19,7 @@ import { CancelBookingDto } from './dto/cancel-booking.dto';
 import { CreateGuestReviewDto } from './dto/create-guest-review.dto';
 import { CreatePropertyReviewDto } from './dto/create-property-review.dto';
 import { CreateHostReviewDto } from './dto/create-host-review.dto';
+import { ListBookingsDto } from './dto/list-bookings.dto';
 import { BookingEmailService } from './booking-email.service';
 
 const SP_CHECK_AVAILABILITY   = '[booking].[xsp_CheckAvailability]';
@@ -720,11 +721,16 @@ export class BookingService {
   // LISTAR RESERVAS DEL HOST AUTENTICADO
   // ─────────────────────────────────────────────
 
-  async getHostBookings(hostId: string) {
+  async getHostBookings(hostId: string, dto?: ListBookingsDto) {
+    const page = dto?.page ?? 1;
+    const pageSize = dto?.pageSize ?? 20;
+
     const pool = await this.databaseService.getConnection();
     const request = pool.request();
 
     request.input('ID_Owner', sql.UniqueIdentifier, hostId);
+    request.input('PageNumber', sql.Int, page);
+    request.input('PageSize', sql.Int, pageSize);
 
     const result = await request.execute(SP_GET_HOST_BOOKINGS);
     const recordsets = result.recordsets as any[];
@@ -744,6 +750,12 @@ export class BookingService {
             totalNoShow: 0,
           },
           bookings: [],
+          pagination: {
+            page,
+            pageSize,
+            totalCount: 0,
+            hasMore: false,
+          },
           message: firstRow.ErrorMessage,
         },
       };
@@ -751,6 +763,8 @@ export class BookingService {
 
     const summaryRow = firstRow;
     const bookingRows = recordsets[1] || [];
+    const totalCount = Number(summaryRow.TotalCount ?? summaryRow.TotalBookings ?? bookingRows.length);
+    const hasMore = page * pageSize < totalCount;
 
     return {
       success: true,
@@ -802,6 +816,12 @@ export class BookingService {
             totalReviews: b.TotalHostReviews,
           },
         })),
+        pagination: {
+          page,
+          pageSize,
+          totalCount,
+          hasMore,
+        },
       },
     };
   }
@@ -810,11 +830,16 @@ export class BookingService {
   // LISTAR RESERVAS DEL GUEST AUTENTICADO
   // ─────────────────────────────────────────────
 
-  async getGuestBookings(guestId: string) {
+  async getGuestBookings(guestId: string, dto?: ListBookingsDto) {
+    const page = dto?.page ?? 1;
+    const pageSize = dto?.pageSize ?? 20;
+
     const pool = await this.databaseService.getConnection();
     const request = pool.request();
 
     request.input('ID_Guest', sql.UniqueIdentifier, guestId);
+    request.input('PageNumber', sql.Int, page);
+    request.input('PageSize', sql.Int, pageSize);
 
     const result = await request.execute(SP_GET_GUEST_BOOKINGS);
     const recordsets = result.recordsets as any[];
@@ -834,6 +859,12 @@ export class BookingService {
             totalNoShow: 0,
           },
           bookings: [],
+          pagination: {
+            page,
+            pageSize,
+            totalCount: 0,
+            hasMore: false,
+          },
           message: firstRow.ErrorMessage,
         },
       };
@@ -841,6 +872,8 @@ export class BookingService {
 
     const summaryRow = firstRow;
     const bookingRows = recordsets[1] || [];
+    const totalCount = Number(summaryRow.TotalCount ?? summaryRow.TotalBookings ?? bookingRows.length);
+    const hasMore = page * pageSize < totalCount;
 
     return {
       success: true,
@@ -870,7 +903,6 @@ export class BookingService {
             average: b.PropertyAvgRating,
             totalReviews: b.PropertyTotalReviews,
           },
-          // Rating promedio general del guest (mismo valor en todas las filas)
           guestRating: {
             average: b.GuestAvgRating,
             totalReviews: b.GuestTotalReviews,
@@ -887,6 +919,12 @@ export class BookingService {
             name: b.StatusName,
           },
         })),
+        pagination: {
+          page,
+          pageSize,
+          totalCount,
+          hasMore,
+        },
       },
     };
   }

@@ -33,14 +33,18 @@ export class PropertiesSearchService {
     );
 
     const properties = result.recordset || [];
-    const totalCount = properties[0]?.TotalCount || 0;
+    const page = dto.page ?? 1;
+    const pageSize = dto.pageSize ?? 20;
+    const totalCount = Number(properties[0]?.TotalCount ?? 0);
+    const hasMore = page * pageSize < totalCount;
 
     return {
       success: true,
       data: {
         totalCount,
-        page: dto.page ?? 1,
-        pageSize: dto.pageSize ?? 20,
+        page,
+        pageSize,
+        hasMore,
         properties: properties.map((p: any) => mapPropertyToCard(p)),
       },
     };
