@@ -7,3 +7,4 @@ export { hostVerificationEmailTemplate } from './host-verification-email.templat
 export { invitationConfirmedTemplate } from './invitation-confirmed.template';
 export { bookingConfirmedTemplate } from './booking-confirmed.template';
 export type { BookingConfirmedTemplateParams } from './booking-confirmed.template';
+export { appBetaInviteTemplate } from './app-beta-invite.template';

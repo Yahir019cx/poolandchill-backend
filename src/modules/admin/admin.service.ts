@@ -5,6 +5,7 @@ import { ZohoMailService } from '../../web/email/zoho-mail.service';
 import {
   propertyApprovedTemplate,
   propertyRejectedTemplate,
+  appBetaInviteTemplate,
 } from '../../web/email/templates';
 
 @Injectable()
@@ -200,6 +201,39 @@ export class AdminService {
     return {
       success: true,
       message: 'Propiedad suspendida.',
+    };
+  }
+
+  /**
+   * Envío masivo de invitación beta de la app
+   */
+  async sendBulkBetaInvite(emails: string[]) {
+    const html = appBetaInviteTemplate();
+    const subject = 'Te invitamos a probar Pool & Chill';
+
+    const results: { email: string; ok: boolean; error?: string }[] = [];
+
+    for (const email of emails) {
+      try {
+        await this.zohoMailService.sendMail(email, subject, html);
+        results.push({ email, ok: true });
+        this.logger.log(`Beta invite enviado a ${email}`);
+      } catch (err) {
+        results.push({ email, ok: false, error: err.message });
+        this.logger.error(`Error enviando beta invite a ${email}: ${err.message}`);
+      }
+    }
+
+    const sent = results.filter((r) => r.ok).length;
+    const failed = results.filter((r) => !r.ok).length;
+
+    return {
+      success: true,
+      message: `Enviados: ${sent}, Fallidos: ${failed}`,
+      total: emails.length,
+      sent,
+      failed,
+      details: results,
     };
   }
 

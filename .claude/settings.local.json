@@ -3,7 +3,8 @@
     "allow": [
       "Bash(node -e \":*)",
       "Bash(pnpm add jose)",
-      "Bash(pnpm run build)"
+      "Bash(pnpm run build)",
+      "Bash(npx tsc --noEmit)"
     ]
   }
 }

@@ -24,6 +24,7 @@ import {
   RejectPropertyDto,
   SuspendPropertyDto,
   UpdatePropertyStatusDto,
+  BulkBetaInviteDto,
 } from './dto';
 
 @ApiTags('Admin - Properties')
@@ -247,4 +248,5 @@ export class AdminController {
   async UpdateStateProperty(@Body() dto: UpdatePropertyStatusDto) {
     return this.adminService.UpdateStateProperty(dto.Op, dto.propertyId);
   }
+
 }

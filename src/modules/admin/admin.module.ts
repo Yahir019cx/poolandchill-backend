@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { AdminController } from './admin.controller';
+import { BulkEmailController } from './bulk-email.controller';
 import { AdminService } from './admin.service';
 import { AdminRoleGuard } from './guards/admin-role.guard';
 import { AuthModule } from '../auth/auth.module';
@@ -18,7 +19,7 @@ import { EmailModule } from '../../web/email/email.module';
  */
 @Module({
   imports: [AuthModule, EmailModule],
-  controllers: [AdminController],
+  controllers: [AdminController, BulkEmailController],
   providers: [AdminService, AdminRoleGuard],
   exports: [AdminRoleGuard],
 })
