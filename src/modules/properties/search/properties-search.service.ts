@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import * as sql from 'mssql';
 import { DatabaseService } from '../../../config/database.config';
 import { SearchPropertiesDto } from '../dto';
@@ -9,7 +9,17 @@ export class PropertiesSearchService {
   constructor(private readonly databaseService: DatabaseService) {}
 
   async searchProperties(dto: SearchPropertiesDto) {
-                                                                                                                                                                                                                                                                                                                
+    const checkIn =
+      dto.checkInDate != null ? new Date(dto.checkInDate) : null;
+    const checkOut =
+      dto.checkOutDate != null ? new Date(dto.checkOutDate) : null;
+
+    if (checkIn != null && checkOut != null && checkOut <= checkIn) {
+      throw new BadRequestException(
+        'checkOutDate debe ser posterior a checkInDate',
+      );
+    }
+
     const hasPoolValue = dto.hasPool === true ? true : null;
     const hasCabinValue = dto.hasCabin === true ? true : null;
     const hasCampingValue = dto.hasCamping === true ? true : null;
@@ -25,6 +35,8 @@ export class PropertiesSearchService {
         { name: 'MinPrice', type: sql.Decimal(10, 2), value: dto.minPrice ?? null },
         { name: 'MaxPrice', type: sql.Decimal(10, 2), value: dto.maxPrice ?? null },
         { name: 'SearchText', type: sql.NVarChar(100), value: dto.search ?? null },
+        { name: 'CheckInDate', type: sql.Date, value: checkIn },
+        { name: 'CheckOutDate', type: sql.Date, value: checkOut },
         { name: 'SortBy', type: sql.VarChar(20), value: dto.sortBy ?? 'newest' },
         { name: 'PageNumber', type: sql.Int, value: dto.page ?? 1 },
         { name: 'PageSize', type: sql.Int, value: dto.pageSize ?? 20 },

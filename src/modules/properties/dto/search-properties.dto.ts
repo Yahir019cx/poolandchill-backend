@@ -1,4 +1,4 @@
-import { IsOptional, IsBoolean, IsInt, IsNumber, IsString, Min } from 'class-validator';
+import { IsOptional, IsBoolean, IsInt, IsNumber, IsString, Min, IsDateString } from 'class-validator';
 import { Transform } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -48,6 +48,16 @@ export class SearchPropertiesDto {
   @IsNumber()
   @Min(0)
   maxPrice?: number;
+
+  @ApiPropertyOptional({ description: 'Fecha de entrada (YYYY-MM-DD) para filtrar disponibilidad' })
+  @IsOptional()
+  @IsDateString()
+  checkInDate?: string;
+
+  @ApiPropertyOptional({ description: 'Fecha de salida (YYYY-MM-DD) para filtrar disponibilidad' })
+  @IsOptional()
+  @IsDateString()
+  checkOutDate?: string;
 
   @ApiPropertyOptional({ description: 'Buscar por nombre' })
   @IsOptional()
