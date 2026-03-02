@@ -127,8 +127,17 @@ export class BookingService {
       );
       spRow = result.recordset?.[0];
       
-    } catch (error) {
-      
+    } catch (error: any) {
+      const message = error?.message ?? '';
+      if (
+        typeof message === 'string' &&
+        message.includes('GuestPhone') &&
+        message.includes('NULL')
+      ) {
+        throw new BadRequestException(
+          'Para hacer una reserva actualiza tu numero de telefono en Perfil → Modificar mis datos',
+        );
+      }
       throw new InternalServerErrorException('Error al procesar la reserva');
     }
 
