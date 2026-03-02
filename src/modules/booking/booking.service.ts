@@ -128,14 +128,20 @@ export class BookingService {
       spRow = result.recordset?.[0];
       
     } catch (error: any) {
-      const message = error?.message ?? '';
-      if (
-        typeof message === 'string' &&
-        message.includes('GuestPhone') &&
-        message.includes('NULL')
-      ) {
+      const message = typeof error?.message === 'string' ? error.message : '';
+      const originalMessage =
+        typeof error?.originalError?.message === 'string'
+          ? error.originalError.message
+          : '';
+      const fullErrorText = [message, originalMessage, String(error)]
+        .filter(Boolean)
+        .join(' ');
+      const isGuestPhoneNull =
+        fullErrorText.includes('GuestPhone') &&
+        (fullErrorText.includes('NULL') || fullErrorText.includes('null'));
+      if (isGuestPhoneNull) {
         throw new BadRequestException(
-          'Para hacer una reserva actualiza tu numero de telefono en Perfil → Modificar mis datos',
+          'Para hacer una reserva actualiza tu numero de telefono en Perfil -> Modificar mis datos',
         );
       }
       throw new InternalServerErrorException('Error al procesar la reserva');
