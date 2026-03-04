@@ -94,6 +94,15 @@ export interface HostOnboardingResponse {
 }
 
 /**
+ * Interface para respuesta de desactivación de cuenta
+ */
+export interface DeactivateAccountResponse {
+  userId: string;
+  message: string;
+  deactivatedAt: Date;
+}
+
+/**
  * Servicio para gestionar el perfil de usuarios
  * Permite obtener y actualizar el perfil del usuario autenticado
  */
@@ -509,6 +518,62 @@ export class UsersService {
 
       throw new InternalServerErrorException(
         'Error al completar el onboarding. Intenta nuevamente.',
+      );
+    }
+  }
+
+  /**
+   * Desactiva (soft delete) la cuenta del usuario autenticado
+   *
+   * @param userId - ID del usuario (extraído del JWT)
+   * @returns Información de la desactivación
+   */
+  async deactivateAccount(userId: string): Promise<DeactivateAccountResponse> {
+    try {
+      const result = await this.databaseService.executeStoredProcedure(
+        '[security].[xsp_deactivate_account]',
+        [{ name: 'UserId', type: sql.UniqueIdentifier, value: userId }],
+        [{ name: 'ErrorMessage', type: sql.NVarChar(500) }],
+      );
+
+      const { ErrorMessage: errorMessage } = result.output;
+
+      if (errorMessage) {
+        const lower = errorMessage.toLowerCase();
+
+        if (lower.includes('no encontrado') || lower.includes('not found')) {
+          throw new NotFoundException('Usuario no encontrado');
+        }
+
+        throw new BadRequestException(errorMessage);
+      }
+
+      const row = result.recordset?.[0];
+
+      if (!row) {
+        throw new InternalServerErrorException(
+          'Error al desactivar la cuenta',
+        );
+      }
+
+      return {
+        userId: row.UserId,
+        message: row.Message || 'Cuenta desactivada exitosamente',
+        deactivatedAt: row.DeactivatedAt || new Date(),
+      };
+    } catch (error) {
+      this.logger.error(`Error al desactivar cuenta: ${error.message}`);
+
+      if (
+        error instanceof NotFoundException ||
+        error instanceof BadRequestException ||
+        error instanceof InternalServerErrorException
+      ) {
+        throw error;
+      }
+
+      throw new InternalServerErrorException(
+        'Error al desactivar la cuenta. Intenta nuevamente.',
       );
     }
   }

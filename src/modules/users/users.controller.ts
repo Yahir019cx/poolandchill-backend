@@ -25,6 +25,7 @@ import {
   UpdatedProfile,
   ImageUpdateResponse,
   HostOnboardingResponse,
+  DeactivateAccountResponse,
 } from './users.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { UpdateImageDto } from './dto/update-image.dto';
@@ -487,6 +488,64 @@ export class UsersController {
   ): Promise<HostOnboardingResponse> {
     const userId = req.user.userId;
     return this.usersService.completeHostOnboarding(userId);
+  }
+
+  /**
+   * Desactiva (soft delete) la cuenta del usuario autenticado
+   *
+   * @param req - Request con el usuario del token JWT
+   * @returns Información de la desactivación
+   */
+  @Delete('me')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Desactivar mi cuenta',
+    description: `
+      Desactiva (soft delete) la cuenta del usuario autenticado.
+
+      **Requiere autenticación:** Token JWT válido en el header Authorization.
+
+      **Comportamiento:**
+      - Marca la cuenta como eliminada (AccountStatus = 3)
+      - Desactiva roles y proveedores externos
+      - Revoca todos los Refresh Tokens del usuario
+    `,
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Cuenta desactivada exitosamente',
+    schema: {
+      type: 'object',
+      properties: {
+        userId: {
+          type: 'string',
+          example: '3DDA3AA3-F90F-4B2B-AC23-346C8B9E537D',
+        },
+        message: {
+          type: 'string',
+          example: 'Cuenta desactivada exitosamente',
+        },
+        deactivatedAt: {
+          type: 'string',
+          format: 'date-time',
+          example: '2026-01-21T18:45:00Z',
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Token JWT inválido o expirado',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Usuario no encontrado',
+  })
+  async deactivateMyAccount(
+    @Request() req: any,
+  ): Promise<DeactivateAccountResponse> {
+    const userId = req.user.userId;
+    return this.usersService.deactivateAccount(userId);
   }
 
   @Get('host')
