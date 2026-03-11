@@ -40,17 +40,19 @@ export class ServicesDto {
 // ══════════════════════════════════════════════════
 
 export class LocationDto {
-  @ApiProperty({ example: 'Av. Los Pinos' })
+  @ApiPropertyOptional({ example: 'Av. Los Pinos', description: 'Opcional para lugares remotos' })
+  @IsOptional()
   @IsString()
-  @MinLength(1, { message: 'La calle es requerida' })
+  @MinLength(0)
   @MaxLength(200)
-  street: string;
+  street?: string;
 
-  @ApiProperty({ example: '332' })
+  @ApiPropertyOptional({ example: '332', description: 'Opcional para lugares remotos' })
+  @IsOptional()
   @IsString()
-  @MinLength(1, { message: 'El número exterior es requerido' })
+  @MinLength(0)
   @MaxLength(20)
-  exteriorNumber: string;
+  exteriorNumber?: string;
 
   @ApiPropertyOptional({ example: 'A' })
   @IsOptional()
@@ -58,17 +60,18 @@ export class LocationDto {
   @MaxLength(20)
   interiorNumber?: string;
 
-  @ApiPropertyOptional({ example: 'Col. Las Águilas' })
+  @ApiPropertyOptional({ example: 'Col. Las Águilas', description: 'Opcional para lugares remotos' })
   @IsOptional()
   @IsString()
   @MaxLength(100)
   neighborhood?: string;
 
-  @ApiProperty({ example: '20130' })
+  @ApiPropertyOptional({ example: '20130', description: 'Opcional para lugares remotos' })
+  @IsOptional()
   @IsString()
-  @MinLength(4)
+  @MinLength(0)
   @MaxLength(10)
-  zipCode: string;
+  zipCode?: string;
 
   @ApiProperty({ example: 1 })
   @IsInt()
