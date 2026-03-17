@@ -39,6 +39,7 @@ export interface UserProfile {
   linkedProviders: string[];
   isHost: boolean;
   isStaff: boolean;
+  hasPendingProperty: boolean;
 }
 
 /**
@@ -182,6 +183,7 @@ export class UsersService {
           : [],
         isHost: Boolean(userData.IsHost),
         isStaff: Boolean(userData.IsStaff),
+        hasPendingProperty: Boolean(userData.HasPendingProperty),
       };
 
       return profile;
