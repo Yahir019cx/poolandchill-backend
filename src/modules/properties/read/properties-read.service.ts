@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import * as sql from 'mssql';
 import { DatabaseService } from '../../../config/database.config';
 
@@ -161,6 +161,45 @@ export class PropertiesReadService {
         rules,
         images,
       },
+    };
+  }
+
+  async getMyFiscalAddress(userId: string): Promise<{
+    street: string | null;
+    exteriorNumber: string | null;
+    interiorNumber: string | null;
+    neighborhood: string | null;
+    zipCode: string | null;
+    stateName: string | null;
+    cityName: string | null;
+  }> {
+    const result = await this.databaseService.executeStoredProcedure<{
+      Street: string | null;
+      ExteriorNumber: string | null;
+      InteriorNumber: string | null;
+      Neighborhood: string | null;
+      ZipCode: string | null;
+      StateName: string | null;
+      CityName: string | null;
+    }>(
+      '[property].[xsp_GetOwnerFiscalAddress]',
+      [{ name: 'ID_Owner', type: sql.UniqueIdentifier, value: userId }],
+      [],
+    );
+
+    const row = result.recordset?.[0];
+    if (!row) {
+      throw new NotFoundException('No se encontró ninguna propiedad registrada para este host');
+    }
+
+    return {
+      street: row.Street ?? null,
+      exteriorNumber: row.ExteriorNumber ?? null,
+      interiorNumber: row.InteriorNumber ?? null,
+      neighborhood: row.Neighborhood ?? null,
+      zipCode: row.ZipCode ?? null,
+      stateName: row.StateName ?? null,
+      cityName: row.CityName ?? null,
     };
   }
 

@@ -2,6 +2,7 @@ import {
   Injectable,
   Logger,
   BadRequestException,
+  NotFoundException,
   InternalServerErrorException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -10,12 +11,14 @@ import Stripe from 'stripe';
 import * as sql from 'mssql';
 import { DatabaseService } from '../../config/database.config';
 import { BookingService } from '../booking/booking.service';
+import { SetupConnectAccountDto } from './dto/setup-connect-account.dto';
 
 const SP_REGISTER_STRIPE_ACCOUNT = '[payment].[xsp_RegisterStripeAccount]';
 const SP_GET_STRIPE_ACCOUNT_BY_USER_ID = '[payment].[xsp_GetStripeAccountByUserId]';
 const SP_PROCESS_PAYOUT = '[payment].[xsp_ProcessPayout]';
 const SP_UPDATE_PAYOUT_STATUS = '[payment].[xsp_UpdatePayoutStatus]';
 const SP_GET_SCHEDULED_PAYOUTS = '[payment].[xsp_GetScheduledPayouts]';
+const SP_SAVE_FISCAL_PROFILE = '[payment].[xsp_SaveHostFiscalProfile]';
 
 @Injectable()
 export class HostPaymentsService {
@@ -175,6 +178,127 @@ export class HostPaymentsService {
         throw new BadRequestException(err.message ?? 'Error de Stripe');
       }
       throw new InternalServerErrorException('Error al crear cuenta de pagos');
+    }
+  }
+
+  /**
+   * Crea la cuenta Stripe Connect Express con datos pre-llenados, guarda el perfil fiscal
+   * en BD y devuelve el link de onboarding.
+   */
+  async setupConnectAccount(
+    userId: string,
+    email: string,
+    dto: SetupConnectAccountDto,
+  ): Promise<{ onboardingUrl: string }> {
+    const stripe = this.getStripe();
+    const { returnUrl, refreshUrl } = this.getStripeRedirectUrls();
+
+    const [year, month, day] = dto.dateOfBirth.split('-').map(Number);
+    const phoneE164 = dto.phone.startsWith('+') ? dto.phone : `+52${dto.phone}`;
+
+    try {
+      const appUrl = this.configService.get<string>('APP_URL', 'https://poolandchill.mx');
+
+      const account = await stripe.accounts.create({
+        type: 'express',
+        country: 'MX',
+        business_type: 'individual',
+        email,
+        business_profile: {
+          url: appUrl,
+        },
+        metadata: { userId },
+        individual: {
+          first_name: dto.firstName,
+          last_name: dto.lastName,
+          dob: { day, month, year },
+          phone: phoneE164,
+          id_number: dto.rfc,
+          address: {
+            line1: `${dto.street} ${dto.exteriorNumber}`.trim(),
+            ...(dto.cityName ? { city: dto.cityName } : {}),
+            ...(dto.stateName ? { state: dto.stateName } : {}),
+            ...(dto.zipCode ? { postal_code: dto.zipCode } : {}),
+            country: 'MX',
+          },
+        },
+        external_account: {
+          object: 'bank_account',
+          country: 'MX',
+          currency: 'mxn',
+          account_number: dto.clabe,
+        } as any,
+        capabilities: {
+          transfers: { requested: true },
+        },
+      });
+
+      const accountLink = await stripe.accountLinks.create({
+        account: account.id,
+        type: 'account_onboarding',
+        refresh_url: refreshUrl,
+        return_url: returnUrl,
+      });
+
+      await this.registerStripeAccountInDb({
+        userId,
+        stripeAccountId: account.id,
+        email: account.email ?? null,
+        country: account.country ?? null,
+        defaultCurrency: account.default_currency ?? 'MXN',
+        accountStatus: 'pending',
+        chargesEnabled: false,
+        payoutsEnabled: false,
+        detailsSubmitted: false,
+        onboardingCompleted: false,
+        onboardingUrl: null,
+      });
+
+      await this.saveFiscalProfile(userId, account.id, dto);
+
+      return { onboardingUrl: accountLink.url };
+    } catch (err: any) {
+      this.logger.error(`Error al configurar cuenta Connect: ${err?.message}`);
+      if (err?.type === 'StripeInvalidRequestError') {
+        throw new BadRequestException(err.message ?? 'Error de Stripe');
+      }
+      throw new InternalServerErrorException('Error al configurar cuenta de pagos');
+    }
+  }
+
+  private async saveFiscalProfile(
+    userId: string,
+    stripeAccountId: string | null,
+    dto: SetupConnectAccountDto,
+  ): Promise<void> {
+    const result = await this.databaseService.executeStoredProcedure<{
+      Success: number;
+      Message: string;
+    }>(
+      SP_SAVE_FISCAL_PROFILE,
+      [
+        { name: 'UserId', type: sql.UniqueIdentifier, value: userId },
+        { name: 'StripeAccountId', type: sql.VarChar(100), value: stripeAccountId },
+        { name: 'FirstName', type: sql.NVarChar(100), value: dto.firstName },
+        { name: 'LastName', type: sql.NVarChar(200), value: dto.lastName },
+        { name: 'DateOfBirth', type: sql.Date, value: new Date(dto.dateOfBirth) },
+        { name: 'Phone', type: sql.NVarChar(20), value: dto.phone },
+        { name: 'RFC', type: sql.NVarChar(13), value: dto.rfc },
+        { name: 'CLABE', type: sql.NVarChar(18), value: dto.clabe },
+        { name: 'Street', type: sql.NVarChar(200), value: dto.street },
+        { name: 'ExteriorNumber', type: sql.NVarChar(50), value: dto.exteriorNumber },
+        { name: 'InteriorNumber', type: sql.NVarChar(50), value: dto.interiorNumber ?? null },
+        { name: 'Neighborhood', type: sql.NVarChar(200), value: dto.neighborhood },
+        { name: 'ZipCode', type: sql.Char(5), value: dto.zipCode },
+        { name: 'StateName', type: sql.NVarChar(100), value: dto.stateName },
+        { name: 'CityName', type: sql.NVarChar(100), value: dto.cityName },
+      ],
+      [],
+    );
+
+    const row = result.recordset?.[0];
+    if (row && row.Success !== 1) {
+      throw new InternalServerErrorException(row.Message ?? 'Error al guardar perfil fiscal');
     }
   }
 

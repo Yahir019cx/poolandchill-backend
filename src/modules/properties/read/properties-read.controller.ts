@@ -62,6 +62,41 @@ export class PropertiesReadController {
     return this.readService.getPropertyById(dto.propertyId, dto.idOwner ?? null);
   }
 
+  @Get('my/fiscal-address')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Obtener dirección fiscal de la primera propiedad del host',
+    description: `
+      Devuelve la dirección registrada en la primera propiedad del host autenticado.
+      Se usa para pre-llenar el formulario de configuración de Stripe Connect.
+      Devuelve 404 si el host no tiene ninguna propiedad registrada.
+    `,
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Dirección fiscal de la propiedad',
+    schema: {
+      type: 'object',
+      properties: {
+        street: { type: 'string', nullable: true },
+        exteriorNumber: { type: 'string', nullable: true },
+        interiorNumber: { type: 'string', nullable: true },
+        neighborhood: { type: 'string', nullable: true },
+        zipCode: { type: 'string', nullable: true },
+        stateName: { type: 'string', nullable: true },
+        cityName: { type: 'string', nullable: true },
+      },
+    },
+  })
+  @ApiResponse({ status: 401, description: 'No autenticado' })
+  @ApiResponse({ status: 404, description: 'El host no tiene propiedades registradas' })
+  async getMyFiscalAddress(@Request() req: any) {
+    const userId = req.user.userId;
+    return this.readService.getMyFiscalAddress(userId);
+  }
+
   @Get('my')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('JWT-auth')

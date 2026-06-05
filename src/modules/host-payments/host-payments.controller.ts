@@ -24,6 +24,7 @@ import type { Request, Response } from 'express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { HostPaymentsService } from './host-payments.service';
 import { CreateConnectAccountDto } from './dto/create-connect-account.dto';
+import { SetupConnectAccountDto } from './dto/setup-connect-account.dto';
 
 @ApiTags('Host Payments (Stripe Connect)')
 @Controller('stripe')
@@ -62,6 +63,39 @@ export class HostPaymentsController {
       throw new BadRequestException('UserId es requerido');
     }
     return this.hostPaymentsService.createConnectAccount(userId);
+  }
+
+  @Post('connect/setup-account')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Configurar cuenta Stripe Connect con datos pre-llenados',
+    description: `
+      Guarda el perfil fiscal del host, crea la cuenta Express en Stripe con los datos
+      ya pre-llenados (nombre, RFC, CLABE, domicilio) y devuelve el link de onboarding.
+      Reemplaza el flujo de create-account para el primer registro.
+    `,
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Link de onboarding generado',
+    schema: {
+      type: 'object',
+      properties: {
+        onboardingUrl: { type: 'string', description: 'URL de Stripe Connect onboarding' },
+      },
+    },
+  })
+  @ApiResponse({ status: 400, description: 'Datos inválidos o error de Stripe' })
+  @ApiResponse({ status: 401, description: 'No autenticado' })
+  async setupConnectAccount(@Body() dto: SetupConnectAccountDto, @Req() req: any) {
+    const userId = req.user?.userId;
+    const email = req.user?.email;
+    if (!userId) {
+      throw new BadRequestException('UserId es requerido');
+    }
+    return this.hostPaymentsService.setupConnectAccount(userId, email, dto);
   }
 
   @Post('connect/account-update-link')
