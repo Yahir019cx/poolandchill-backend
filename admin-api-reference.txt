@@ -1,20 +1,18 @@
 ================================================================================
   POOL & CHILL — REFERENCIA DE APIs PARA AGENTE CRM (PANEL ADMIN)
-  Versión: 1.0  |  Fecha: 2026-06-22
+  Versión: 2.0  |  Fecha: 2026-06-22
 ================================================================================
 
 INSTRUCCIONES GENERALES PARA EL AGENTE
 ---------------------------------------
 - Todas las rutas son relativas. El consumidor del CRM define la base URL.
-- Prefijo de ejemplo: /api/<ruta>
 - Todas las peticiones que requieren autenticación deben incluir el header:
     Authorization: Bearer {accessToken}
 - Content-Type siempre: application/json
 - El accessToken expira en 15 minutos. Usar el endpoint de refresh cuando
   se reciba un 401. Si el refresh falla, redirigir al login.
-- Las rutas de Admin requieren que el usuario tenga un rol de categoría
-  administrativa activo en base de datos (admin, superadmin, support, moderator).
-  Si no lo tiene, el servidor responde 403.
+- Las rutas de Admin requieren rol administrativo activo en BD
+  (admin, superadmin, support, moderator). Si no lo tiene → 403.
 
 
 ================================================================================
@@ -41,7 +39,7 @@ Respuesta exitosa (200):
   "refreshToken": "550e8400-e29b-41d4-a716-446655440000",
   "expiresIn": 900,
   "user": {
-    "userId": "uuid-del-usuario",
+    "userId": "uuid",
     "email": "admin@poolandchill.com.mx",
     "firstName": "Juan",
     "lastName": "Pérez",
@@ -49,7 +47,6 @@ Respuesta exitosa (200):
     "profileImageUrl": null,
     "roles": ["admin"],
     "isEmailVerified": true,
-    "isPhoneVerified": false,
     "isHost": false,
     "isStaff": true,
     "accountStatus": 1,
@@ -58,15 +55,7 @@ Respuesta exitosa (200):
   }
 }
 
-Errores posibles:
-  400 → Datos inválidos (email mal formado, password vacío)
-  401 → Credenciales incorrectas o cuenta bloqueada
-  403 → Cuenta suspendida, eliminada o baneada
-  429 → Demasiados intentos, esperar 1 minuto
-
-Acción del agente:
-  Guardar accessToken y refreshToken en estado de sesión.
-  Verificar que roles incluya un rol administrativo antes de mostrar el panel.
+Errores: 400 datos inválidos | 401 credenciales incorrectas | 403 cuenta suspendida | 429 rate limit
 
 
 ────────────────────────────────────────
@@ -77,23 +66,12 @@ Ruta    : /auth/refresh
 Auth    : No requiere
 
 Request body:
-{
-  "refreshToken": "550e8400-e29b-41d4-a716-446655440000"
-}
+{ "refreshToken": "uuid-del-refresh-token" }
 
 Respuesta exitosa (200):
-{
-  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "expiresIn": 900
-}
+{ "accessToken": "nuevo-jwt...", "expiresIn": 900 }
 
-Errores posibles:
-  400 → refreshToken inválido o no es UUID
-  401 → refreshToken expirado, revocado o cuenta suspendida
-
-Acción del agente:
-  Llamar automáticamente cuando cualquier petición regrese 401.
-  Si este endpoint también falla con 401, redirigir al login.
+Errores: 401 → token expirado/revocado → redirigir al login
 
 
 ────────────────────────────────────────
@@ -101,46 +79,216 @@ Acción del agente:
 ────────────────────────────────────────
 Método  : POST
 Ruta    : /auth/logout
-Auth    : Requiere (Bearer accessToken)
+Auth    : Requiere JWT
 
-Request body: (vacío)
+Respuesta exitosa (200):
+{ "success": true, "message": "Sesión cerrada exitosamente" }
+
+
+================================================================================
+  SECCIÓN 2 — USUARIOS
+================================================================================
+
+────────────────────────────────────────
+2.1  LISTAR HOSTS
+────────────────────────────────────────
+Método  : GET
+Ruta    : /users/host
+Auth    : Requiere JWT
+
+Respuesta exitosa (200):
+[
+  {
+    "userId": "uuid",
+    "displayName": "Carlos Ruiz",
+    "email": "carlos@gmail.com",
+    "profileImageUrl": "https://...",
+    "isIdentityVerified": true
+  }
+]
+
+Nota: Solo devuelve usuarios con IsHostOnboarded IN (1,2).
+
+
+────────────────────────────────────────
+2.2  LISTAR GUESTS (NO HOSTS)
+────────────────────────────────────────
+Método  : GET
+Ruta    : /users/guests
+Auth    : Requiere JWT
+
+Respuesta exitosa (200):
+[
+  {
+    "userId": "uuid",
+    "displayName": "Ana López",
+    "email": "ana@gmail.com",
+    "profileImageUrl": null,
+    "isIdentityVerified": false
+  }
+]
+
+Nota: Solo devuelve usuarios con IsHostOnboarded = 0.
+
+
+================================================================================
+  SECCIÓN 3 — PROPIEDADES
+================================================================================
+
+────────────────────────────────────────
+3.1  BUSCAR / LISTAR PROPIEDADES (PAGINADO)
+────────────────────────────────────────
+Método  : GET
+Ruta    : /properties/search
+Auth    : No requiere (público)
+
+Query params (todos opcionales):
+  page        → número de página (default: 1)
+  pageSize    → resultados por página (default: 20)
+  search      → texto libre (busca en nombre/descripción)
+  hasPool     → true/false
+  hasCabin    → true/false
+  hasCamping  → true/false
+  stateId     → ID del estado
+  cityId      → ID de la ciudad
+  minPrice    → precio mínimo
+  maxPrice    → precio máximo
+  checkInDate → fecha entrada (YYYY-MM-DD)
+  checkOutDate→ fecha salida (YYYY-MM-DD)
+  sortBy      → 'newest' | otros valores del SP
 
 Respuesta exitosa (200):
 {
   "success": true,
-  "message": "Sesión cerrada exitosamente"
+  "data": {
+    "totalCount": 100,
+    "page": 1,
+    "pageSize": 20,
+    "hasMore": true,
+    "properties": [
+      {
+        "propertyId": "uuid",
+        "propertyName": "Quinta Los Pinos",
+        "hasPool": true,
+        "hasCabin": false,
+        "hasCamping": false,
+        "location": "Guadalajara, Jalisco",
+        "priceFrom": 1500.00,
+        "images": [...],
+        "rating": "Nuevo",
+        "reviewCount": 0,
+        "totalBookings": 0
+      }
+    ]
+  }
 }
 
-Errores posibles:
-  401 → Token inválido o expirado
-
-Acción del agente:
-  Revocar todos los refresh tokens del usuario.
-  Limpiar accessToken y refreshToken del estado local.
-  Redirigir al login.
-
-
-================================================================================
-  SECCIÓN 2 — ADMIN: GESTIÓN DE PROPIEDADES
-================================================================================
-
-Todas las rutas de esta sección requieren:
-  - Header: Authorization: Bearer {accessToken}
-  - El usuario debe tener rol administrativo activo
+Nota: Este endpoint solo devuelve propiedades ACTIVAS.
+      Para ver todas (incluyendo pendientes, suspendidas, etc.) usar 4.1.
 
 
 ────────────────────────────────────────
-2.1  LISTAR PROPIEDADES PENDIENTES
+3.2  VER PROPIEDAD COMPLETA POR ID
+────────────────────────────────────────
+Método  : POST
+Ruta    : /properties/by-id
+Auth    : No requiere (público)
+
+Request body:
+{
+  "propertyId": "uuid-de-la-propiedad",
+  "idOwner": null
+}
+
+Nota: idOwner es opcional. Si se envía, solo devuelve la propiedad si
+      pertenece a ese dueño. Para el CRM admin enviar null.
+
+Respuesta exitosa (200):
+{
+  "success": true,
+  "data": {
+    "property": {
+      "idProperty": "uuid",
+      "idOwner": "uuid-del-owner",
+      "propertyName": "Quinta Los Pinos",
+      "description": "...",
+      "hasPool": true,
+      "hasCabin": false,
+      "hasCamping": false,
+      "currentStep": 5,
+      "status": { "idStatus": 2, "statusName": "Activa", "statusCode": "active" },
+      "createdAt": "...",
+      "approvedAt": "...",
+      "location": {
+        "street": "Calle 5",
+        "exteriorNumber": "123",
+        "neighborhood": "Centro",
+        "zipCode": "44100",
+        "stateName": "Jalisco",
+        "cityName": "Guadalajara",
+        "latitude": 20.659698,
+        "longitude": -103.349609,
+        "formattedAddress": "Calle 5 #123, Centro, Guadalajara, Jalisco"
+      },
+      "owner": {
+        "displayName": "Carlos Ruiz",
+        "bio": "...",
+        "profileImageUrl": "https://...",
+        "isIdentityVerified": true,
+        "createdAt": "..."
+      }
+    },
+    "pools": [
+      {
+        "idPool": "uuid",
+        "maxPersons": 20,
+        "temperatureMin": 28,
+        "temperatureMax": 32,
+        "checkInTime": "10:00",
+        "checkOutTime": "18:00",
+        "priceWeekday": 1500.00,
+        "priceWeekend": 2000.00,
+        "securityDeposit": 500.00,
+        "amenities": [
+          { "amenityName": "Regadera", "amenityCode": "shower", "icon": "...", "quantity": 2 }
+        ]
+      }
+    ],
+    "cabins": [...],
+    "campingAreas": [...],
+    "rules": [
+      { "idPropertyRule": "uuid", "ruleText": "No mascotas", "displayOrder": 1 }
+    ],
+    "images": [
+      {
+        "idPropertyImage": "uuid",
+        "imageURL": "https://firebase...",
+        "isPrimary": true,
+        "displayOrder": 1
+      }
+    ]
+  }
+}
+
+Uso en CRM: Llamar con el propertyId para ver el detalle completo antes
+            de aprobar/rechazar, o para revisar imágenes antes de borrar alguna.
+
+
+================================================================================
+  SECCIÓN 4 — ADMIN: GESTIÓN DE PROPIEDADES
+================================================================================
+
+Todas las rutas requieren: JWT + rol administrativo activo
+
+
+────────────────────────────────────────
+4.1  LISTAR PROPIEDADES PENDIENTES DE REVISIÓN
 ────────────────────────────────────────
 Método  : GET
 Ruta    : /admin/properties/pending
 Auth    : Requiere (Admin)
 
-Query params (opcionales):
-  page     → número de página (default: 1)
-  pageSize → resultados por página (default: 20)
-
-Ejemplo: /admin/properties/pending?page=1&pageSize=20
+Query params: page (default:1), pageSize (default:20)
 
 Respuesta exitosa (200):
 {
@@ -151,7 +299,7 @@ Respuesta exitosa (200):
     "pageSize": 20,
     "properties": [
       {
-        "propertyId": "uuid-de-la-propiedad",
+        "propertyId": "uuid",
         "propertyName": "Quinta Los Pinos",
         "hasPool": true,
         "hasCabin": false,
@@ -159,198 +307,130 @@ Respuesta exitosa (200):
         "submittedAt": "2026-06-20T14:00:00.000Z",
         "location": "Guadalajara, Jalisco",
         "priceFrom": 1500.00,
-        "owner": {
-          "name": "Carlos Ruiz",
-          "email": "carlos@gmail.com",
-          "phone": "+523312345678"
-        },
-        "images": ["https://firebase.../imagen1.jpg"]
+        "owner": { "name": "Carlos Ruiz", "email": "carlos@gmail.com", "phone": "+523312345678" },
+        "images": ["https://..."]
       }
     ]
   }
 }
 
-Errores posibles:
-  403 → Sin permisos de administrador
-
-Acción del agente:
-  Mostrar lista de propiedades en espera de revisión.
-  Cada item debe tener botones de Aprobar y Rechazar vinculados a 2.3 y 2.4.
-
 
 ────────────────────────────────────────
-2.2  LISTAR TODAS LAS PROPIEDADES
+4.2  LISTAR TODAS LAS PROPIEDADES (ADMIN)
 ────────────────────────────────────────
 Método  : GET
 Ruta    : /admin/properties/AllProperties
 Auth    : Requiere (Admin)
 
-Request body: (ninguno)
-
 Respuesta exitosa (200):
 [
   {
     "ID_Property": 1,
-    "ID_Owner": "uuid-del-owner",
+    "ID_Owner": "uuid",
     "PropertyName": "Quinta Los Pinos",
-    "Description": "Hermosa quinta con alberca",
+    "Description": "...",
     "ID_Status": 2,
     "FirstName": "Carlos",
     "LastName": "Ruiz"
   }
 ]
 
-Valores de ID_Status:
-  1 → Pendiente de revisión
-  2 → Activa
-  3 → Pausada
-  4 → Suspendida
-  5 → Baneada
+Valores ID_Status: 1=Pendiente | 2=Activa | 3=Pausada | 4=Suspendida | 5=Baneada
 
-Errores posibles:
-  403 → Sin permisos de administrador
-
-Acción del agente:
-  Usar para el listado general con filtros y búsqueda en el CRM.
+Nota: Devuelve TODOS los estados. Útil para el listado general del CRM.
+      Para ver detalle completo de una propiedad usar 3.2 con el ID_Property.
 
 
 ────────────────────────────────────────
-2.3  APROBAR PROPIEDAD
+4.3  APROBAR PROPIEDAD
 ────────────────────────────────────────
 Método  : POST
 Ruta    : /admin/properties/approve
 Auth    : Requiere (Admin)
 
-Request body:
-{
-  "propertyId": "uuid-de-la-propiedad"
-}
+Request body: { "propertyId": "uuid" }
 
-Respuesta exitosa (200):
-{
-  "success": true,
-  "message": "Propiedad aprobada."
-}
-
-Efecto secundario:
-  El servidor envía automáticamente un email al dueño de la propiedad
-  notificando que fue aprobada. No requiere acción adicional del agente.
-
-Errores posibles:
-  400 → Propiedad no encontrada o no está en estado pendiente
-  403 → Sin permisos de administrador
-
-Acción del agente:
-  Llamar con el propertyId seleccionado desde la lista de pendientes (2.1).
-  Actualizar la UI removiendo la propiedad de la lista de pendientes.
+Respuesta (200): { "success": true, "message": "Propiedad aprobada." }
+Efecto: envía email automático al dueño notificando aprobación.
+Errores: 400 → no encontrada o no está pendiente
 
 
 ────────────────────────────────────────
-2.4  RECHAZAR PROPIEDAD
+4.4  RECHAZAR PROPIEDAD
 ────────────────────────────────────────
 Método  : POST
 Ruta    : /admin/properties/reject
 Auth    : Requiere (Admin)
 
 Request body:
-{
-  "propertyId": "uuid-de-la-propiedad",
-  "reason": "Las imágenes no corresponden a la propiedad descrita."
-}
+{ "propertyId": "uuid", "reason": "Motivo mínimo 10 caracteres" }
 
-Validaciones:
-  reason → mínimo 10 caracteres, obligatorio
-
-Respuesta exitosa (200):
-{
-  "success": true,
-  "message": "Propiedad rechazada."
-}
-
-Efecto secundario:
-  El servidor envía automáticamente un email al dueño con el motivo del rechazo.
-
-Errores posibles:
-  400 → Propiedad no encontrada, no está pendiente, o reason muy corto
-  403 → Sin permisos de administrador
-
-Acción del agente:
-  Mostrar un campo de texto obligatorio para que el admin escriba el motivo
-  antes de confirmar el rechazo. Mínimo 10 caracteres.
+Respuesta (200): { "success": true, "message": "Propiedad rechazada." }
+Efecto: envía email automático al dueño con el motivo.
+Errores: 400 → no encontrada, no está pendiente, o reason muy corto
 
 
 ────────────────────────────────────────
-2.5  SUSPENDER PROPIEDAD
+4.5  SUSPENDER PROPIEDAD
 ────────────────────────────────────────
 Método  : POST
 Ruta    : /admin/properties/suspend
 Auth    : Requiere (Admin)
 
 Request body:
-{
-  "propertyId": "uuid-de-la-propiedad",
-  "reason": "Múltiples reportes de usuarios por información falsa."
-}
+{ "propertyId": "uuid", "reason": "Motivo mínimo 10 caracteres" }
 
-Validaciones:
-  reason → mínimo 10 caracteres, obligatorio
-
-Aplica a propiedades con estado: Activa o Pausada
-
-Respuesta exitosa (200):
-{
-  "success": true,
-  "message": "Propiedad suspendida."
-}
-
-Errores posibles:
-  400 → Propiedad no encontrada o no puede ser suspendida en su estado actual
-  403 → Sin permisos de administrador
-
-Acción del agente:
-  Requiere confirmación del admin con motivo antes de ejecutar.
-  Actualizar el estado en la UI al recibir respuesta exitosa.
+Aplica solo a propiedades Activas o Pausadas.
+Respuesta (200): { "success": true, "message": "Propiedad suspendida." }
 
 
 ────────────────────────────────────────
-2.6  CAMBIAR ESTADO DE PROPIEDAD
+4.6  CAMBIAR ESTADO DE PROPIEDAD
 ────────────────────────────────────────
 Método  : POST
 Ruta    : /admin/properties/UpdateStateProperty
 Auth    : Requiere (Admin)
 
 Request body:
+{ "propertyId": "uuid", "Op": 3 }
+
+Valores Op: 3=Activar | 4=Pausar | 5=Banear
+Respuesta (200): { "success": true, "message": "Operación realizada correctamente." }
+Nota: Op=5 (Banear) es irreversible, pedir confirmación al admin.
+
+
+────────────────────────────────────────
+4.7  ELIMINAR IMAGEN DE PROPIEDAD (ADMIN)
+────────────────────────────────────────
+Método  : DELETE
+Ruta    : /admin/properties/image
+Auth    : Requiere (Admin)
+
+Request body:
 {
   "propertyId": "uuid-de-la-propiedad",
-  "Op": 3
+  "propertyImageId": "uuid-de-la-imagen"
 }
 
-Valores de Op:
-  3 → Activar la propiedad
-  4 → Pausar la propiedad
-  5 → Banear la propiedad
+Nota: El idPropertyImage se obtiene del array "images" que devuelve 3.2.
 
-Respuesta exitosa (200):
-{
-  "success": true,
-  "message": "Operación realizada correctamente."
-}
+Respuesta (200): { "success": true, "message": "Imagen eliminada." }
 
-Errores posibles:
-  400 → Op inválido, propiedad no encontrada o cambio no permitido
-  403 → Sin permisos de administrador
+Errores:
+  400 → imagen no encontrada, no pertenece a esa propiedad, o es la última imagen
+  403 → sin permisos de admin
 
-Acción del agente:
-  Usar para el menú de acciones rápidas en la tabla de propiedades (2.2).
-  Op=5 (Banear) debe requerir confirmación explícita del admin por ser irreversible.
+Restricción: No se puede eliminar la última imagen de una propiedad.
+             Si la imagen eliminada era la principal, el SP reasigna automáticamente
+             una nueva imagen principal.
 
 
 ================================================================================
-  SECCIÓN 3 — ADMIN: CORREO PERSONALIZADO A HOSTS
+  SECCIÓN 5 — ADMIN: CORREO PERSONALIZADO A HOSTS
 ================================================================================
 
 ────────────────────────────────────────
-3.1  ENVIAR EMAIL PERSONALIZADO A HOSTS
+5.1  ENVIAR EMAIL PERSONALIZADO A HOSTS
 ────────────────────────────────────────
 Método  : POST
 Ruta    : /admin/email/send-to-hosts
@@ -358,150 +438,131 @@ Auth    : Requiere (Admin)
 
 Request body:
 {
-  "subject": "Actualización importante para hosts",
-  "message": "Estimado host,\n\nTe informamos que a partir del próximo mes...",
-  "hostEmails": [
-    "host1@gmail.com",
-    "host2@gmail.com",
-    "host3@outlook.com"
-  ]
+  "subject": "Actualización importante",
+  "message": "Estimado host,\n\nTe informamos que...",
+  "hostEmails": ["host1@gmail.com", "host2@gmail.com"]
 }
 
 Validaciones:
-  subject    → string, mínimo 3 caracteres
-  message    → string, mínimo 10 caracteres, soporta saltos de línea (\n)
-  hostEmails → array de emails válidos, mínimo 1 elemento
+  subject    → mínimo 3 caracteres
+  message    → mínimo 10 caracteres, soporta \n para saltos de línea
+  hostEmails → array de emails válidos, mínimo 1
 
 Respuesta exitosa (200):
 {
   "success": true,
-  "message": "Enviados: 3, Fallidos: 0",
-  "total": 3,
-  "sent": 3,
+  "message": "Enviados: 2, Fallidos: 0",
+  "total": 2,
+  "sent": 2,
   "failed": 0,
   "details": [
     { "email": "host1@gmail.com", "ok": true },
-    { "email": "host2@gmail.com", "ok": true },
-    { "email": "host3@outlook.com", "ok": false, "error": "mailbox full" }
+    { "email": "host2@gmail.com", "ok": false, "error": "mailbox full" }
   ]
 }
 
-Errores posibles:
-  400 → subject/message muy cortos, hostEmails vacío o emails inválidos
-  403 → Sin permisos de administrador
-
 Notas:
-  - El envío es secuencial con 1 segundo de pausa entre emails para evitar
-    rate limit del proveedor de correo.
-  - Si algunos emails fallan, el endpoint igual responde 200 con el detalle
-    de cuáles fallaron. Revisar el campo "details" para ver errores individuales.
-  - Los emails se envían con el diseño corporativo de Pool & Chill.
-
-Acción del agente:
-  El CRM debe permitir al admin:
-    1. Escribir asunto y cuerpo del mensaje (textarea).
-    2. Seleccionar uno o varios hosts desde una lista (obtener emails de 2.2).
-    3. Mostrar resumen del envío al terminar con los detalles por email.
+  - Envío secuencial con 1 segundo entre emails para evitar rate limit.
+  - Si algunos fallan, igual responde 200. Revisar "details" para ver errores.
+  - Los emails llegan con el diseño corporativo de Pool & Chill.
+  - Para obtener los emails de hosts usar GET /users/host (sección 2.1).
 
 
 ================================================================================
-  SECCIÓN 4 — ADMIN: VERIFICACIÓN DE HOSTS (KYC)
+  SECCIÓN 6 — ADMIN: VERIFICACIÓN DE HOSTS (KYC)
 ================================================================================
 
 ────────────────────────────────────────
-4.1  ENVIAR EMAIL DE VERIFICACIÓN DE IDENTIDAD AL HOST
+6.1  SOLICITAR VERIFICACIÓN DE IDENTIDAD AL HOST
 ────────────────────────────────────────
 Método  : POST
 Ruta    : /verification/send-verification-email
 Auth    : Requiere (Admin)
 
 Request body:
-{
-  "userId": "uuid-del-host"
-}
+{ "userId": "uuid-del-host" }
 
 Respuesta exitosa (200):
-{
-  "success": true,
-  "message": "Correo de verificación enviado."
-}
+{ "success": true, "message": "Correo de verificación enviado." }
 
 Qué hace:
-  Envía un email al host con un botón que lo lleva al flujo de verificación
-  de identidad (KYC) usando el proveedor Didit. El host completa la verificación
-  en su dispositivo y el resultado se procesa automáticamente vía webhook.
+  Envía email al host con enlace al flujo KYC (proveedor Didit).
+  El host completa la verificación en su dispositivo.
+  El backend actualiza isIdentityVerified automáticamente vía webhook.
 
-Errores posibles:
-  404 → Usuario no encontrado
-  403 → Sin permisos de administrador
+Errores: 404 → usuario no encontrado | 403 → sin permisos admin
 
-Acción del agente:
-  Usar desde la sección "Verificaciones de Anfitriones" del CRM.
-  Mostrar un botón "Solicitar verificación" por cada host cuyo estado
-  de verificación esté pendiente o no iniciado.
-  El userId se obtiene del campo ID_Owner en la respuesta de 2.2.
+Uso: Para hosts con isIdentityVerified = false en la lista de 2.1.
+     El userId viene del campo "userId" de esa lista.
 
 
 ================================================================================
-  SECCIÓN 5 — FLUJOS COMPLETOS RECOMENDADOS PARA EL CRM
+  SECCIÓN 7 — FLUJOS COMPLETOS PARA EL CRM
 ================================================================================
 
 FLUJO A — Revisión de propiedades nuevas
-  1. GET  /admin/properties/pending          → obtener la lista
-  2. Admin revisa cada propiedad
-  3a. POST /admin/properties/approve         → si aprueba
-  3b. POST /admin/properties/reject          → si rechaza (pedir motivo al admin)
-  Resultado: el dueño recibe email automático en ambos casos.
+  1. GET  /admin/properties/pending         → lista de pendientes
+  2. POST /properties/by-id                 → ver detalle completo de cada una
+  3a. POST /admin/properties/approve        → aprobar (email automático al dueño)
+  3b. POST /admin/properties/reject         → rechazar con motivo (email automático)
 
 FLUJO B — Gestión general de propiedades
-  1. GET  /admin/properties/AllProperties    → listar todas
-  2. Filtrar/buscar en el CRM por nombre, estado, owner
-  3. POST /admin/properties/UpdateStateProperty (Op=3/4/5) → cambiar estado
-     o POST /admin/properties/suspend        → suspender con motivo
+  1. GET  /admin/properties/AllProperties   → tabla con todas + sus estados
+  2. POST /properties/by-id                 → ver detalle de la seleccionada
+  3. POST /admin/properties/UpdateStateProperty → cambiar estado (3/4/5)
+     o POST /admin/properties/suspend       → suspender con motivo obligatorio
 
-FLUJO C — Envío de comunicado a hosts
-  1. GET  /admin/properties/AllProperties    → obtener emails de owners
+FLUJO C — Moderación de imágenes
+  1. POST /properties/by-id                 → ver imágenes con sus idPropertyImage
+  2. Admin identifica la imagen inapropiada
+  3. DELETE /admin/properties/image         → borrar con propertyId + propertyImageId
+
+FLUJO D — Comunicado masivo a hosts
+  1. GET  /users/host                       → obtener lista con emails
   2. Admin redacta asunto y mensaje en el CRM
-  3. Admin selecciona los hosts destinatarios
-  4. POST /admin/email/send-to-hosts         → enviar
-  5. CRM muestra el resumen de enviados/fallidos del campo "details"
+  3. Admin selecciona destinatarios del listado
+  4. POST /admin/email/send-to-hosts        → enviar
+  5. CRM muestra resumen con el campo "details"
 
-FLUJO D — Verificación de identidad de host
-  1. GET  /admin/properties/AllProperties    → identificar hosts sin verificar
-  2. POST /verification/send-verification-email (userId del host)
-  3. El host completa el proceso KYC desde su app
-  4. El backend actualiza el estado automáticamente vía webhook (sin acción del CRM)
+FLUJO E — Verificación KYC de hosts
+  1. GET  /users/host                       → filtrar donde isIdentityVerified = false
+  2. POST /verification/send-verification-email → enviar solicitud KYC al host
+  3. El backend actualiza el estado automáticamente (sin acción del CRM)
 
-FLUJO E — Manejo de sesión del admin en el CRM
-  1. POST /auth/login                        → obtener accessToken + refreshToken
-  2. Usar accessToken en cada petición
-  3. Cuando una petición regrese 401:
-       POST /auth/refresh                    → obtener nuevo accessToken
-       Reintentar la petición original
-  4. Si /auth/refresh también regresa 401:
-       Redirigir al login, limpiar tokens locales
-  5. Al cerrar sesión:
-       POST /auth/logout                     → revocar tokens en servidor
-       Limpiar tokens locales
+FLUJO F — Explorar propiedades activas (vista pública)
+  1. GET  /properties/search?page=1&pageSize=20  → listado paginado de activas
+  2. POST /properties/by-id                      → detalle completo
+
+FLUJO G — Manejo de sesión
+  1. POST /auth/login                       → obtener accessToken + refreshToken
+  2. Usar accessToken en cada petición (header Authorization: Bearer ...)
+  3. Si petición devuelve 401 → POST /auth/refresh → nuevo accessToken → reintentar
+  4. Si /auth/refresh devuelve 401 → limpiar tokens y redirigir al login
+  5. Al cerrar sesión → POST /auth/logout → limpiar tokens locales
 
 
 ================================================================================
   RESUMEN DE ENDPOINTS — REFERENCIA RÁPIDA
 ================================================================================
 
-  MÉTODO  RUTA                                        AUTH      DESCRIPCIÓN
-  ------  ------------------------------------------  --------  --------------------------------
-  POST    /auth/login                                 No        Iniciar sesión
-  POST    /auth/refresh                               No        Renovar access token
-  POST    /auth/logout                                JWT       Cerrar sesión
-  GET     /admin/properties/pending                   JWT+Admin Propiedades pendientes
-  GET     /admin/properties/AllProperties             JWT+Admin Todas las propiedades
-  POST    /admin/properties/approve                   JWT+Admin Aprobar propiedad
-  POST    /admin/properties/reject                    JWT+Admin Rechazar propiedad (con motivo)
-  POST    /admin/properties/suspend                   JWT+Admin Suspender propiedad (con motivo)
-  POST    /admin/properties/UpdateStateProperty       JWT+Admin Cambiar estado (3=Activa,4=Pausada,5=Baneada)
-  POST    /admin/email/send-to-hosts                  JWT+Admin Email personalizado a hosts
-  POST    /verification/send-verification-email       JWT+Admin Solicitar KYC al host
+  MÉTODO  RUTA                                        AUTH       DESCRIPCIÓN
+  ------  ------------------------------------------  ---------  -----------------------------------
+  POST    /auth/login                                 No         Iniciar sesión
+  POST    /auth/refresh                               No         Renovar access token
+  POST    /auth/logout                                JWT        Cerrar sesión
+  GET     /users/host                                 JWT        Listar hosts
+  GET     /users/guests                               JWT        Listar usuarios no-host
+  GET     /properties/search                          No         Buscar propiedades activas (paginado)
+  POST    /properties/by-id                           No         Detalle completo de una propiedad
+  GET     /admin/properties/pending                   JWT+Admin  Propiedades pendientes de revisión
+  GET     /admin/properties/AllProperties             JWT+Admin  Todas las propiedades (todos estados)
+  POST    /admin/properties/approve                   JWT+Admin  Aprobar propiedad
+  POST    /admin/properties/reject                    JWT+Admin  Rechazar propiedad (con motivo)
+  POST    /admin/properties/suspend                   JWT+Admin  Suspender propiedad (con motivo)
+  POST    /admin/properties/UpdateStateProperty       JWT+Admin  Cambiar estado (3=Activa,4=Pausada,5=Baneada)
+  DELETE  /admin/properties/image                     JWT+Admin  Eliminar imagen de propiedad
+  POST    /admin/email/send-to-hosts                  JWT+Admin  Email personalizado a hosts
+  POST    /verification/send-verification-email       JWT+Admin  Solicitar KYC al host
 
 ================================================================================
   FIN DEL DOCUMENTO

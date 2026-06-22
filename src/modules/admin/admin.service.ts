@@ -280,6 +280,29 @@ export class AdminService {
     };
   }
 
+  async deletePropertyImage(propertyId: string, propertyImageId: string) {
+    const result = await this.databaseService.executeStoredProcedure(
+      '[media].[xsp_DeletePropertyImage]',
+      [
+        { name: 'ID_PropertyImage', type: sql.UniqueIdentifier, value: propertyImageId },
+        { name: 'ID_Property', type: sql.UniqueIdentifier, value: propertyId },
+        { name: 'ID_Owner', type: sql.UniqueIdentifier, value: null },
+      ],
+      [
+        { name: 'ResultCode', type: sql.Int },
+        { name: 'ResultMessage', type: sql.NVarChar(500) },
+      ],
+    );
+
+    const { ResultCode, ResultMessage } = result.output;
+
+    if (ResultCode !== 0) {
+      throw new BadRequestException(ResultMessage || 'No se pudo eliminar la imagen.');
+    }
+
+    return { success: true, message: 'Imagen eliminada.' };
+  }
+
   async UpdateStateProperty(Op: number, propertyId: string) {
     const result = await this.databaseService.executeStoredProcedure(
       '[property].[xsp_UpdateStateProperty]',

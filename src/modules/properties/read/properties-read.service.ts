@@ -121,6 +121,7 @@ export class PropertiesReadService {
       owner: prop.ID_Owner
         ? {
             displayName: prop.OwnerDisplayName ?? null,
+            email: prop.OwnerEmail ?? null,
             bio: prop.OwnerBio ?? null,
             profileImageUrl: prop.OwnerProfileImageUrl ?? null,
             isIdentityVerified: Boolean(prop.OwnerIsIdentityVerified),

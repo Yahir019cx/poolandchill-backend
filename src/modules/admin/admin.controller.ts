@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Delete,
   Body,
   Query,
   UseGuards,
@@ -25,6 +26,7 @@ import {
   SuspendPropertyDto,
   UpdatePropertyStatusDto,
 } from './dto';
+import { DeletePropertyImageDto } from '../properties/dto/update-property.dto';
 
 @ApiTags('Admin - Properties')
 @Controller('admin/properties')
@@ -217,6 +219,19 @@ export class AdminController {
       dto.propertyId,
       dto.reason,
     );
+  }
+
+  @Delete('properties/image')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Eliminar imagen de propiedad (Admin)',
+    description: 'Permite al admin eliminar cualquier imagen de una propiedad sin ser el dueño.',
+  })
+  @ApiResponse({ status: 200, description: 'Imagen eliminada' })
+  @ApiResponse({ status: 400, description: 'Imagen no encontrada o no se pudo eliminar' })
+  @ApiResponse({ status: 403, description: 'No tienes permisos de administrador' })
+  async deletePropertyImage(@Body() dto: DeletePropertyImageDto) {
+    return this.adminService.deletePropertyImage(dto.propertyId, dto.propertyImageId);
   }
 
   @Post('UpdateStateProperty')
