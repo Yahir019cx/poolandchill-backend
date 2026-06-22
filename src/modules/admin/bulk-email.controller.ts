@@ -1,30 +1,34 @@
-import { Controller, Post, Body, HttpCode, HttpStatus } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { Controller, Post, Body, HttpCode, HttpStatus, UseGuards } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { AdminRoleGuard } from './guards/admin-role.guard';
 import { AdminService } from './admin.service';
-import { BulkBetaInviteDto } from './dto';
+import { SendAdminEmailDto } from './dto';
 
-@ApiTags('Bulk Email')
+@ApiTags('Admin - Email')
 @Controller('admin/email')
+@UseGuards(JwtAuthGuard, AdminRoleGuard)
+@ApiBearerAuth('JWT-auth')
 export class BulkEmailController {
   constructor(private readonly adminService: AdminService) {}
 
-  @Post('bulk-beta-invite')
+  @Post('send-to-hosts')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: 'Envío masivo de invitación beta',
+    summary: 'Enviar email personalizado a hosts',
     description:
-      'Envía un email de invitación a probar la app de Pool & Chill a una lista de correos.',
+      'Permite al admin escribir un asunto y mensaje personalizados y enviarlo a uno o varios hosts seleccionados.',
   })
   @ApiResponse({
     status: 200,
-    description: 'Resultado del envío masivo',
+    description: 'Resultado del envío',
     schema: {
       type: 'object',
       properties: {
         success: { type: 'boolean', example: true },
-        message: { type: 'string', example: 'Enviados: 10, Fallidos: 0' },
-        total: { type: 'number', example: 10 },
-        sent: { type: 'number', example: 10 },
+        message: { type: 'string', example: 'Enviados: 3, Fallidos: 0' },
+        total: { type: 'number', example: 3 },
+        sent: { type: 'number', example: 3 },
         failed: { type: 'number', example: 0 },
         details: {
           type: 'array',
@@ -40,7 +44,9 @@ export class BulkEmailController {
       },
     },
   })
-  async sendBulkBetaInvite(@Body() dto: BulkBetaInviteDto) {
-    return this.adminService.sendBulkBetaInvite(dto.emails);
+  @ApiResponse({ status: 400, description: 'Datos inválidos' })
+  @ApiResponse({ status: 403, description: 'No tienes permisos para esta acción' })
+  async sendToHosts(@Body() dto: SendAdminEmailDto) {
+    return this.adminService.sendCustomEmailToHosts(dto.subject, dto.message, dto.hostEmails);
   }
 }

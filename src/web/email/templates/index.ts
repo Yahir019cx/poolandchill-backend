@@ -8,3 +8,4 @@ export { invitationConfirmedTemplate } from './invitation-confirmed.template';
 export { bookingConfirmedTemplate } from './booking-confirmed.template';
 export type { BookingConfirmedTemplateParams } from './booking-confirmed.template';
 export { appBetaInviteTemplate } from './app-beta-invite.template';
+export { adminCustomEmailTemplate } from './admin-custom-email.template';

@@ -24,7 +24,6 @@ import {
   RejectPropertyDto,
   SuspendPropertyDto,
   UpdatePropertyStatusDto,
-  BulkBetaInviteDto,
 } from './dto';
 
 @ApiTags('Admin - Properties')

@@ -6,6 +6,7 @@ import {
   propertyApprovedTemplate,
   propertyRejectedTemplate,
   appBetaInviteTemplate,
+  adminCustomEmailTemplate,
 } from '../../web/email/templates';
 
 @Injectable()
@@ -238,6 +239,41 @@ export class AdminService {
       success: true,
       message: `Enviados: ${sent}, Fallidos: ${failed}`,
       total: emails.length,
+      sent,
+      failed,
+      details: results,
+    };
+  }
+
+  async sendCustomEmailToHosts(subject: string, message: string, hostEmails: string[]) {
+    const html = adminCustomEmailTemplate(subject, message);
+    const delayMs = 1000;
+
+    const results: { email: string; ok: boolean; error?: string }[] = [];
+
+    for (let i = 0; i < hostEmails.length; i++) {
+      const email = hostEmails[i];
+      try {
+        await this.zohoMailService.sendMail(email, subject, html);
+        results.push({ email, ok: true });
+        this.logger.log(`Email enviado a ${email} (${i + 1}/${hostEmails.length})`);
+      } catch (err) {
+        results.push({ email, ok: false, error: err.message });
+        this.logger.error(`Error enviando email a ${email}: ${err.message}`);
+      }
+
+      if (i < hostEmails.length - 1) {
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+      }
+    }
+
+    const sent = results.filter((r) => r.ok).length;
+    const failed = results.filter((r) => !r.ok).length;
+
+    return {
+      success: true,
+      message: `Enviados: ${sent}, Fallidos: ${failed}`,
+      total: hostEmails.length,
       sent,
       failed,
       details: results,

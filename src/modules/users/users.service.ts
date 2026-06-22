@@ -583,8 +583,8 @@ export class UsersService {
   async getUserDataHost(): Promise<any[]> {
     const result = await this.databaseService.executeStoredProcedure(
       '[property].[xsp_GetUserDataHost]',
-      [], // No inputs
-      [], // No outputs
+      [],
+      [],
     );
 
     return result.recordset || [];
