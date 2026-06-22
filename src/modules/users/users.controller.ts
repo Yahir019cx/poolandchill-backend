@@ -560,7 +560,22 @@ export class UsersController {
         isIdentityVerified: user.IsIdentityVerified,
       }));
     } catch (error) {
-      //console.error('Error al obtener users host:', error);
+      throw new InternalServerErrorException('Error al obtener los usuarios');
+    }
+  }
+
+  @Get('guests')
+  async getAllUsersGuest() {
+    try {
+      const users = await this.usersService.getUserDataGuest();
+      return users.map((user) => ({
+        userId: user.UserId,
+        displayName: user.DisplayName,
+        profileImageUrl: user.ProfileImageUrl,
+        email: user.Email,
+        isIdentityVerified: user.IsIdentityVerified,
+      }));
+    } catch (error) {
       throw new InternalServerErrorException('Error al obtener los usuarios');
     }
   }

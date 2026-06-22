@@ -589,4 +589,14 @@ export class UsersService {
 
     return result.recordset || [];
   }
+
+  async getUserDataGuest(): Promise<any[]> {
+    const result = await this.databaseService.executeStoredProcedure(
+      '[property].[xsp_GetUserDataGuest]',
+      [],
+      [],
+    );
+
+    return result.recordset || [];
+  }
 }
